@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3 uid="uid://cmq2x7mdjorry"]
+
+[ext_resource type="Script" uid="uid://biyd3cb2aasqq" path="res://scripts/enemy.gd" id="1_script"]
+[ext_resource type="SpriteFrames" path="res://assets/sprite_frames/monster.frames.tres" id="2_frames"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(14, 14)
+
+[node name="Enemy" type="CharacterBody2D"]
+z_index = 5
+script = ExtResource("1_script")
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("2_frames")
+animation = &"idle"
+autoplay = "idle"
+offset = Vector2(0, -3.01)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_1")

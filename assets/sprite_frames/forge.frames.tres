@@ -1,0 +1,13 @@
+[gd_resource type="SpriteFrames" load_steps=4 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/frames/wall_fountain_basin_red_anim_f0.png" id="1"]
+[ext_resource type="Texture2D" path="res://assets/frames/wall_fountain_basin_red_anim_f1.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/frames/wall_fountain_basin_red_anim_f2.png" id="3"]
+
+[resource]
+animations = [{
+"frames": [ExtResource("1"), ExtResource("2"), ExtResource("3")],
+"loop": true,
+"name": &"burn",
+"speed": 4.0
+}]

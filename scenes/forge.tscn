@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://crrtgk8whsiax"]
+
+[ext_resource type="SpriteFrames" path="res://assets/sprite_frames/forge.frames.tres" id="1_frames"]
+
+[node name="Forge" type="Node2D"]
+z_index = 4
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("1_frames")
+animation = &"burn"
+autoplay = "burn"

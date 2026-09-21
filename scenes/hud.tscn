@@ -1,0 +1,147 @@
+[gd_scene load_steps=3 format=3 uid="uid://cmk7rtnjepde2"]
+
+[ext_resource type="Script" uid="uid://j54rakbsgu0q" path="res://scripts/hud.gd" id="1_hud"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.07, 0.07, 0.12, 0.93)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 0.5, 0.32, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="Hearts" type="HBoxContainer" parent="."]
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 190.0
+offset_bottom = 30.0
+theme_override_constants/separation = 2
+
+[node name="Treasure" type="Label" parent="."]
+offset_left = 12.0
+offset_top = 32.0
+text = "Tesoro: 0"
+
+[node name="Inventory" type="Label" parent="."]
+offset_left = 12.0
+offset_top = 52.0
+text = "Recursos: -"
+
+[node name="InventoryPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_top = -200.0
+offset_right = 230.0
+offset_bottom = 210.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="InventoryPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Title" type="Label" parent="InventoryPanel/VBox"]
+layout_mode = 2
+text = "= Inventario ="
+
+[node name="InvGrid" type="GridContainer" parent="InventoryPanel/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 4
+
+[node name="Status" type="Label" parent="InventoryPanel/VBox"]
+layout_mode = 2
+text = "E: cerrar · Click sobre una forja para forjar"
+
+[node name="Hint" type="Label" parent="InventoryPanel/VBox"]
+layout_mode = 2
+text = "WASD/flechas: mover · Espacio/click: atacar · E: inventario"
+
+[node name="ForgePanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 30.0
+offset_top = -200.0
+offset_right = 490.0
+offset_bottom = 210.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="ForgePanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Title" type="Label" parent="ForgePanel/VBox"]
+layout_mode = 2
+text = "= Forja ="
+
+[node name="ForgeRes" type="Label" parent="ForgePanel/VBox"]
+layout_mode = 2
+text = "Recursos: -"
+
+[node name="ForgeRecipes" type="VBoxContainer" parent="ForgePanel/VBox"]
+layout_mode = 2
+
+[node name="ForgeStatus" type="Label" parent="ForgePanel/VBox"]
+layout_mode = 2
+text = "Elegí una receta para forjar."
+
+[node name="ForgeHint" type="Label" parent="ForgePanel/VBox"]
+layout_mode = 2
+text = "E: cerrar · Click sobre la forja otra vez para cerrar"
+
+[node name="GameOver" type="Label" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -20.0
+offset_right = 220.0
+offset_bottom = 20.0
+text = "CAÍSTE — R para reintentar"
+horizontal_alignment = 1
+
+[node name="BossBox" type="PanelContainer" parent="."]
+process_mode = 3
+visible = false
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -170.0
+offset_top = 8.0
+offset_right = 170.0
+offset_bottom = 44.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="BossBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="BossName" type="Label" parent="BossBox/VBox"]
+layout_mode = 2
+text = "Capitán de la Torre"
+horizontal_alignment = 1
+
+[node name="BossHp" type="ProgressBar" parent="BossBox/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 150.0
+show_percentage = false
