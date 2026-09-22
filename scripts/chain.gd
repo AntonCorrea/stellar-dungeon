@@ -48,6 +48,13 @@ var _leaderboard := [
 	{"name": "Vos ?", "treasure": 0},
 ]
 
+## Cartera del mock: dirección testnet (Stellar: empieza con G) para que el HUD
+## muestre "prueba on-chain viva" en la demo. El relé real la reemplaza.
+const WALLET_ADDR := "GBAY3NQ5WQM6YZD2LM5DT2Q4O7ZFHQGQ"
+## Transacciones firmadas por el mock: cada escritura (mine/claim/craft/use/
+## transfer/treasure) suma 1 al txn counter que ve la UI.
+var _tx_count := 0
+
 # ---------- escrituras (en producción las firma el relé) ----------
 
 ## Mintear 1 recurso al romper un nodo de minería.
@@ -149,11 +156,24 @@ func get_leaderboard() -> Array:
 func get_treasure() -> int:
 	return _treasure
 
+## Dirección pública de la cartera (mock testnet). El HUD la muestra cortada.
+func get_wallet_address() -> String:
+	return WALLET_ADDR
+
+## Cantidad de transacciones firmadas por el mock (una por escritura).
+func get_tx_count() -> int:
+	return _tx_count
+
+## Cantidad de armas forjadas (tokens únicos) en la cartera.
+func get_forged_count() -> int:
+	return _forged.size()
+
 # ---------- utilidades mock ----------
 
 func _signed(data: Dictionary) -> Dictionary:
 	data["ok"] = true
 	data["hash"] = _fake_hash()
+	_tx_count += 1
 	return data
 
 func _fake_hash() -> String:

@@ -1,12 +1,5 @@
 # Godot 4+ specific ignores
 .godot/
-.nomedia
-
-# Godot-specific ignores
-.import/
-export.cfg
-export_credentials.cfg
-*.tmp
 
 # Imported translations (automatically generated from CSV files)
 *.translation
@@ -15,3 +8,22 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+
+# Export (el .wasm/.pck generado NO va al repo; el preset SÍ va, lo usa el export local)
+dist/
+export/**
+
+# Editor data
+*.tmp
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# Logs y temporales de tests locales
+*.log
+w_*.txt
+we_*.txt

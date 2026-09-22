@@ -26,7 +26,7 @@ RPG 2D top-down en grilla (estilo *Shattered Pixel Dungeon*) hecho en **Godot 4.
 ### Modo de prueba (headless)
 
 ```bash
-# Boot de la escena principal (60 frames y sale)
+# Boot de la escena principal (pantalla de título; 60 frames y sale)
 godot --headless --path . --quit-after 60
 
 # Suite de tests
@@ -38,6 +38,27 @@ godot --headless --path . res://tests/test_day5.tscn
 godot --headless --path . res://tests/test_day6.tscn
 ```
 
+## 🌐 Publicar en GitHub Pages (jugar en navegador)
+
+El juego exporta a **Web (HTML5/WebAssembly)** y GitHub Pages sirve esos archivos estáticos. Ya está configurado el preset `Web` en `export_presets.cfg` (threads desactivados).
+
+Export local:
+
+```bash
+godot --headless --path . --export-release "Web" dist/web/index.html
+```
+
+Publicar (sin CI, build manual): subí el contenido de `dist/web/` a una rama o repo que GitHub Pages pueda servir — por ejemplo una rama `gh-pages` de este repo o tu repo `antoncorrea.github.io` — y activá Pages desde esa fuente:
+
+```bash
+cd dist/web
+git init && git add . && git commit -m "web build"
+git push -f <remote-de-pages> HEAD:gh-pages
+```
+
+> ⚠️ El preset desactiva el **threading** del navegador: GitHub Pages no envía las cabeceras COOP/COEP que exige SharedArrayBuffer, y con threads activos el juego queda en pantalla negra. Para tu propio server con esas cabeceras podés re-activarlo.
+> ⚠️ Al abrir `index.html` local con doble clic (file://) no funciona el juego: el .wasm necesita servirse por HTTP. Usá `python -m http.server` en `dist/web/` para probar en local.
+
 ## Controles
 
 | Acción | Teclas |
@@ -47,7 +68,10 @@ godot --headless --path . res://tests/test_day6.tscn
 | Inventario (abrir/cerrar) | `E` (o `I`) |
 | Forja | Clic sobre la forja (cerca) |
 | Usar frasco | Clic sobre el slot del frasco en el inventario |
-| Reintentar (al morir) | `R` |
+| Pausar / reanudar | `Esc` |
+| Reintentar (morir / victoria / pausa) | `R` |
+
+La partida arranca en una **pantalla de título** (`Enter`/`Space` para jugar, `Esc` para salir).
 
 ## Loop de juego
 
@@ -95,14 +119,15 @@ Suite en `tests/`, corren headless con `--headless --path . res://tests/test_X.t
 ```
 stellar-dungeon/
 ├── project.godot            # autoloads: Chain (mock Stellar), Sfx
-├── scenes/                  # main, player, enemy, hud, forge, drop, ore…
+├── scenes/                  # title, main, player, enemy, hud, forge, drop, ore…
 ├── scripts/
 │   ├── chain.gd             # ⛓️ interfaz on-chain (MOCK — la congela el spec)
 │   ├── level.gd             # generación de mazmorra, spawns, ore, forja
 │   ├── player.gd            # movimiento, ataque, auto-equip, heal
 │   ├── enemy.gd             # enemigos + jefe con FASE 2 y barra de boss
-│   ├── hud.gd               # inventario (grilla) + panel de forja + HUD
+│   ├── hud.gd               # inventario (grilla) + forja + brújula/pausa/victoria
 │   ├── items.gd             # metadata: daños, nombres, calidades, frascos
+│   ├── title.gd             # pantalla de título (Enter para jugar)
 │   └── sfx.gd               # sonidos (packs CC0, pitch aleatorio)
 ├── assets/
 │   ├── frames/              # sprites 16x16 (0x72 tileset)
@@ -128,10 +153,22 @@ El juego no se conecta directo a la red: usa el autoload **`Chain.gd`** como int
 - SFX: **Minifantasy Dungeon SFX Pack** de Leohpaz (CC0) — <https://leohpaz.itch.io/minifantasy-dungeon-sfx-pack>
 - BGM (pendiente): **HydroGene – High Quality 16-bit Music** (CC0) — <https://hydrogene.itch.io/high-quality-16-bit-music>
 
+## Publicar en GitHub
+
+```bash
+cd stellar-dungeon
+git add .
+git commit -m "mensaje"
+git push
+```
+
+> El repo ya existe en GitHub (`AntonCorrea/stellar-dungeon`, rama `main`): no hace falta `git init` ni `git remote add`. Para subir el build web, ver [Publicar en GitHub Pages](#-publicar-en-github-pages-jugar-en-navegador).
+
 ## Roadmap
 
 - [x] Mazmorra procedural (8 salas), minería, forja, combate, jefe 2 fases
 - [x] Inventario en grilla y panel de forja con armas de stats aleatorias
+- [x] Pantalla de título, pausa, brújula hacia el jefe e indicador on-chain en el HUD
 - [x] Suite de tests headless
 - [ ] Backend on-chain real (Node relé + contrato Rust) detrás de `Chain.gd`
 - [ ] BGM (crossfade exploración → boss)
@@ -140,4 +177,4 @@ El juego no se conecta directo a la red: usa el autoload **`Chain.gd`** como int
 
 ---
 
-> ⚠️ **Para publicar en GitHub:** corré `git init`, agregá este repo, y usá el `.gitignore` incluido (excluye `.godot/`). Los docs de diseño (`plan-juego-godot.md`, `idea3-rpg-mazmorra.md`, `chain-spec.md`…) y el PNG 0x72 original viven en `stellar/` fuera del repo: podés copiarlos a `docs/` si querés versionarlos.
+> ⚠️ Usá el `.gitignore` incluido (excluye `.godot/` y `dist/`). Los docs de diseño (`plan-juego-godot.md`, `idea3-rpg-mazmorra.md`, `chain-spec.md`…) y el PNG 0x72 original viven en `stellar/` fuera del repo: podés copiarlos a `docs/` si querés versionarlos.

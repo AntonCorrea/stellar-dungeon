@@ -3,6 +3,8 @@ extends CanvasLayer
 ## objetos que llevás encima. La FORJA es un panel aparte que se abre haciendo
 ## click sobre el brasero del nivel. Armas forjadas: stats aleatorias (suerte,
 ## Común/Fina/Superior/Épica) y cada una es un token único de la cartera.
+## Día 8: indicador on-chain (cartera/txs/forjadas), brújula hacia el Capitán,
+## pausa (Esc), game over con stats y pantalla de victoria al caer el jefe.
 
 const ITEM_NAME := {
 	"madera": "Madera", "cobre": "Cobre", "hierro": "Hierro", "plata": "Plata",
@@ -48,9 +50,20 @@ const RESOURCE_TINTS := {
 @onready var _forge_res: Label = $ForgePanel/VBox/ForgeRes
 @onready var _forge_recipes: VBoxContainer = $ForgePanel/VBox/ForgeRecipes
 @onready var _forge_status: Label = $ForgePanel/VBox/ForgeStatus
-@onready var _game_over: Label = $GameOver
+@onready var _game_over: PanelContainer = $GameOver
+@onready var _game_over_stats: Label = $GameOver/VBox/Stats
+@onready var _victory_panel: PanelContainer = $VictoryPanel
+@onready var _victory_stats: Label = $VictoryPanel/VBox/Stats
 @onready var _boss_box: PanelContainer = $BossBox
 @onready var _boss_hp: ProgressBar = $BossBox/VBox/BossHp
+@onready var _chain_wallet: Label = $ChainBox/VBox/ChainWallet
+@onready var _chain_data: Label = $ChainBox/VBox/ChainData
+@onready var _compass: PanelContainer = $Compass
+@onready var _compass_arrow: TextureRect = $Compass/VBox/ArrowBox/CompassArrow
+@onready var _compass_dist: Label = $Compass/VBox/DistLabel
+@onready var _pause_panel: PanelContainer = $PausePanel
+@onready var _pause_resume: Button = $PausePanel/VBox/ResumeBtn
+@onready var _pause_restart: Button = $PausePanel/VBox/RestartBtn
 
 var _player: Node2D
 var _heart_rects: Array = []
@@ -64,16 +77,36 @@ func _ready() -> void:
 		tr.custom_minimum_size = Vector2(16, 16)
 		_hearts.add_child(tr)
 		_heart_rects.append(tr)
+	_pause_resume.pressed.connect(_toggle_pause)
+	_pause_restart.pressed.connect(_restart)
 	Chain.sync_finished.connect(_on_chain_sync)
 	_on_chain_sync()
 
 func _on_chain_sync() -> void:
+	_refresh_chain_box()
 	await _refresh_summary()
 	await _refresh_inv_grid()
 	await _refresh_forge()
 
+## Actualiza el indicador on-chain: cartera cortada + txs firmadas + forjadas.
+func _refresh_chain_box() -> void:
+	var addr: String = Chain.get_wallet_address()
+	_chain_wallet.text = "%s…%s" % [addr.substr(0, 6), addr.substr(addr.length() - 4, 4)]
+	_chain_data.text = "txs: %d  ·  forjadas: %d" % [Chain.get_tx_count(), Chain.get_forged_count()]
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		# Esc: pausar / reanudar (funciona también con el árbol en pausa).
+		if event.keycode == KEY_ESCAPE:
+			_toggle_pause()
+			return
+		# R: reiniciar desde pausa, game over o victoria.
+		if event.keycode == KEY_R and (get_tree().paused or _game_over.visible or _victory_panel.visible):
+			_restart()
+			return
+		# Con el juego en pausa no se abren inventario/forja.
+		if get_tree().paused:
+			return
 		# E (o I) abre/cierra el inventario y cierra la forja.
 		if event.keycode == KEY_E or event.keycode == KEY_I:
 			_forge_panel.visible = false
@@ -84,6 +117,20 @@ func _unhandled_input(event: InputEvent) -> void:
 					_status_label.text = "Estás en el brasero: hacé click sobre la forja para abrirla."
 				else:
 					_status_label.text = "Frasco: click para usarlo. Buscá la forja y hacé click sobre ella."
+
+## Pausa el árbol y muestra/oculta el panel. El HUD corre con process_mode
+## ALWAYS, así Esc sigue funcionando mientras todo lo demás está congelado.
+func _toggle_pause() -> void:
+	var now_paused := not get_tree().paused
+	get_tree().paused = now_paused
+	_pause_panel.visible = now_paused
+	Sfx.play("pickup")
+
+## Reinicia la mazmorra (desde pausa, game over o victoria). La cartera del
+## mock Chain es un autoload y se conserva entre partidas.
+func _restart() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 ## Abre/cierra el panel de forja (lo llama el jugador al hacer click en la
 ## forja). Abrir la forja cierra el inventario y viceversa.
@@ -117,11 +164,53 @@ func _process(_delta: float) -> void:
 		tr.texture = _heart_tex(hp, maxhp, i)
 	if bool(_player.get("is_dead")) and not _game_over.visible:
 		_game_over.visible = true
+		_game_over_stats.text = _stats_text()
 	if _forge_panel.visible:
 		var close := _player_near_forge()
 		for b in _recipe_buttons:
 			b.disabled = not close
 	_tick_boss_bar()
+	_tick_compass()
+
+## Brújula hacia el Capitán: flecha rotada + distancia en tiles. Se apaga si el
+## jefe murió, está lejos del nivel o el jugador cayó.
+func _tick_compass() -> void:
+	if _player == null or not is_instance_valid(_player) or bool(_player.get("is_dead")):
+		_compass.visible = false
+		return
+	var boss: Node2D = get_tree().get_first_node_in_group("boss") as Node2D
+	if boss == null or not is_instance_valid(boss):
+		_compass.visible = false
+		return
+	var lvl: Node2D = boss.get("level")
+	if lvl == null:
+		_compass.visible = false
+		return
+	var p_cell: Vector2i = lvl.local_to_cell(_player.global_position)
+	var b_cell: Vector2i = lvl.local_to_cell(boss.global_position)
+	_compass.visible = true
+	_compass_dist.text = "Jefe: %d tiles" % int(round(p_cell.distance_to(b_cell)))
+	if _compass_arrow != null:
+		var dir := boss.global_position - _player.global_position
+		if dir.length() > 0.01:
+			_compass_arrow.pivot_offset = _compass_arrow.size / 2.0
+			# La textura weapon_arrow.png apunta hacia ARRIBA (-Y): rotar en
+			# (dir.angle() + PI/2) la orienta hacia la dirección real del jefe.
+			_compass_arrow.rotation = dir.angle() + PI / 2.0
+
+## Resumen de la partida para los paneles de game over / victoria.
+func _stats_text() -> String:
+	var eq := _equipped_weapon()
+	return "Tesoro: %d\nArmas forjadas: %d\nTransacciones firmadas: %d\nEquipo: %s" % [
+		Chain.get_treasure(), Chain.get_forged_count(), Chain.get_tx_count(), Gear.pretty(eq)]
+
+## Lo llama level.on_enemy_killed() cuando cae el Capitán: festejo + stats.
+func show_victory() -> void:
+	if _victory_panel.visible:
+		return
+	Sfx.play("chest_open")
+	_victory_panel.visible = true
+	_victory_stats.text = _stats_text()
 
 ## Muestra/oculta la barra de HP del Capitán (grupo "boss" en enemy.gd).
 func _tick_boss_bar() -> void:

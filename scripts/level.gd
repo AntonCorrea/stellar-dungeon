@@ -406,6 +406,7 @@ const ENEMY_LOOT := {
 
 func on_enemy_killed(enemy: Node2D) -> void:
 	_enemies.erase(enemy)
+	var was_boss := enemy == _boss
 	if enemy == _boss:
 		_boss = null
 	var cell: Vector2i = local_to_cell(enemy.global_position)
@@ -419,6 +420,11 @@ func on_enemy_killed(enemy: Node2D) -> void:
 		for entry in table:
 			if randf() < float(entry[1]):
 				spawn_drop(cell, String(entry[0]), 1)
+	# Día 8: si el que cayó fue el Capitán, la mazmorra está ganada → festejo.
+	if was_boss:
+		var hud := get_tree().get_first_node_in_group("hud")
+		if hud != null:
+			hud.call("show_victory")
 
 func on_ore_broken(node: Node2D) -> void:
 	var cell: Vector2i = local_to_cell(node.global_position)

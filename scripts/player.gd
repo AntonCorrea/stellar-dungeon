@@ -75,8 +75,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_try_attack()
 	elif event.is_action_pressed("ui_accept"):
 		_try_attack()
-	if is_dead and event is InputEventKey and event.pressed and event.keycode == KEY_R:
-		get_tree().reload_current_scene()
+	# Reinicio (R) manejado por el HUD desde game over / pausa / victoria.
 
 ## Click sobre la forja del nivel: abre el panel de forja (si estás cerca) o
 ## avisa. Devuelve true si el click se consumió (no ataca).
