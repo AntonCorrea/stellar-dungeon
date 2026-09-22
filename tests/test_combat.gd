@@ -1,5 +1,5 @@
 extends Node
-## Test end-to-end día 3: ataque del player → daño, muerte → drops,
+## Test end-to-end: ataque del player → daño, muerte → drops,
 ## pickup del drop → tesoro registrado en el mock Chain (on-chain).
 ## Uso: godot --headless --path . res://tests/test_combat.tscn
 

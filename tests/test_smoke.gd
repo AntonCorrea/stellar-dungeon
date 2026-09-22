@@ -35,7 +35,7 @@ func _ready() -> void:
 		var t: String = e.type
 		by_type[t] = by_type.get(t, 0) + 1
 
-	print("=== SMOKE TEST (dia 3) ===")
+	print("=== SMOKE TEST ===")
 	print("rooms: %d | floor tiles: %d | enemies: %d (%s) | ores: %d | forge: %s" % [level._rooms.size(), level._floor.size(), enemies.size(), str(by_type), level._ore_cells.size(), level._forge_cell])
 	player.take_damage(5)
 	await get_tree().process_frame

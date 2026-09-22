@@ -1,5 +1,5 @@
 extends Node2D
-## Nodo de minería (día 4): barril (madera) y vetas tintadas (cobre/hierro/plata).
+## Nodo de minería: barril (madera) y vetas tintadas (cobre/hierro/plata).
 ## Se golpea con el mismo ataque (Espacio/click); rompe en N golpes según
 ## dureza y poder del pico (Chain.tienes pico_madera → 2, pico_cobre → 3).
 

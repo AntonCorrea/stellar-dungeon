@@ -38,27 +38,6 @@ godot --headless --path . res://tests/test_day5.tscn
 godot --headless --path . res://tests/test_day6.tscn
 ```
 
-## 🌐 Publicar en GitHub Pages (jugar en navegador)
-
-El juego exporta a **Web (HTML5/WebAssembly)** y GitHub Pages sirve esos archivos estáticos. Ya está configurado el preset `Web` en `export_presets.cfg` (threads desactivados).
-
-Export local:
-
-```bash
-godot --headless --path . --export-release "Web" dist/web/index.html
-```
-
-Publicar (sin CI, build manual): subí el contenido de `dist/web/` a una rama o repo que GitHub Pages pueda servir — por ejemplo una rama `gh-pages` de este repo o tu repo `antoncorrea.github.io` — y activá Pages desde esa fuente:
-
-```bash
-cd dist/web
-git init && git add . && git commit -m "web build"
-git push -f <remote-de-pages> HEAD:gh-pages
-```
-
-> ⚠️ El preset desactiva el **threading** del navegador: GitHub Pages no envía las cabeceras COOP/COEP que exige SharedArrayBuffer, y con threads activos el juego queda en pantalla negra. Para tu propio server con esas cabeceras podés re-activarlo.
-> ⚠️ Al abrir `index.html` local con doble clic (file://) no funciona el juego: el .wasm necesita servirse por HTTP. Usá `python -m http.server` en `dist/web/` para probar en local.
-
 ## Controles
 
 | Acción | Teclas |
@@ -97,9 +76,20 @@ La partida arranca en una **pantalla de título** (`Enter`/`Space` para jugar, `
 | Sprite | Nombre | Suelta |
 |---|---|---|
 | Rata | Wogol | monedas, arma/frasco |
+| Goblin | Goblin | monedas, arma/frasco |
+| Diablillo | Imp | monedas, arma/frasco |
 | Esqueleto | Skelet | monedas, arma/frasco |
+| Calabaza | Pumpkin | monedas, arma/frasco |
 | Demonio Smith | Masked Orc | monedas, arma/frasco |
+| Guerrero Orco | Orc Warrior | monedas, arma/frasco |
+| Gran Zombi | Big Zombie | monedas, arma/frasco |
+| Ogro | Ogre | monedas, arma/frasco |
+| Demonio Mayor | Big Demon | monedas, arma/frasco |
 | Capitán de la Torre | Jefe (knight) | monedas, arma, **Tinte Real (100%)** |
+
+Las armas equipables (dmg 12–21) salen de los drops y se auto-equipan; íconos y nombres vienen de los frames del pack (Lanza, Arco corto/largo, Machete, Martillo, Hacha doble, Báculos, Espada de caballero, Gema roja, etc.).
+
+📖 **Catálogo completo** (statísticas, loot, recetas y calidades): [GLOSARIO.md](GLOSARIO.md).
 
 ## Tests
 
@@ -143,26 +133,15 @@ stellar-dungeon/
 El juego no se conecta directo a la red: usa el autoload **`Chain.gd`** como interfaz única (hoy **mock** con latencia simulada, firmas y sync de inventario). Daños, curado y equipamiento son locales de partida; la cadena registra posesión, minería, crafting (tokens únicos) y consumo.
 
 - **Spec congelada**: `chain-spec.md` (en la carpeta `stellar/` del workspace, fuera del repo) incluye apéndices:
-  - día 6 → `use_item` (consumo de frascos) y tokens nuevos;
-  - día 7 → craft de armas = **token único por arma** con stats aleatorias (`get_forged_stats`).
-- **Backend (Integrante B)**: relé en **Node** + contrato en **Rust** (`forge_ledger`) sobre Stellar **testnet**, implementando la interfaz de `Chain.gd` contra `soroban-rpc`. Cada arma forjada se mintea como token inmutable (id único, sin re-minteo).
+  - `use_item` (consumo de frascos) y tokens nuevos;
+  - craft de armas = **token único por arma** con stats aleatorias (`get_forged_stats`).
+- **Backend**: relé en **Node** + contrato en **Rust** (`forge_ledger`) sobre Stellar **testnet**, implementando la interfaz de `Chain.gd` contra `soroban-rpc`. Cada arma forjada se mintea como token inmutable (id único, sin re-minteo).
 
 ## Créditos / assets
 
 - Tileset y sprites: **0x72 DungeonTileset II** (16×16, CC0) — <https://0x72.itch.io/dungeontileset-ii>
 - SFX: **Minifantasy Dungeon SFX Pack** de Leohpaz (CC0) — <https://leohpaz.itch.io/minifantasy-dungeon-sfx-pack>
 - BGM (pendiente): **HydroGene – High Quality 16-bit Music** (CC0) — <https://hydrogene.itch.io/high-quality-16-bit-music>
-
-## Publicar en GitHub
-
-```bash
-cd stellar-dungeon
-git add .
-git commit -m "mensaje"
-git push
-```
-
-> El repo ya existe en GitHub (`AntonCorrea/stellar-dungeon`, rama `main`): no hace falta `git init` ni `git remote add`. Para subir el build web, ver [Publicar en GitHub Pages](#-publicar-en-github-pages-jugar-en-navegador).
 
 ## Roadmap
 

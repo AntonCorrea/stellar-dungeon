@@ -1,5 +1,5 @@
 extends Node2D
-## Mazmorra procedural (día 2) + enemigos y drops (día 3) + minería y forja (día 4).
+## Mazmorra procedural + enemigos y drops + minería y forja.
 ## API: is_solid() / to_world() / local_to_cell() / apply_camera_bounds() /
 ## enemy_at() / ore_at() / forge_cell() / spawn_drop() / spawn_text() / on_*.
 
@@ -316,7 +316,7 @@ func _spawn_player() -> void:
 	add_child(p)
 
 func _spawn_enemies() -> void:
-	var pool := ["masked_orc", "masked_orc", "skelet", "skelet", "skelet", "wogol", "wogol", "wogol", "wogol", "wogol"]
+	var pool := ["goblin", "goblin", "wogol", "wogol", "wogol", "imp", "skelet", "skelet", "skelet", "pumpkin_dude", "masked_orc", "masked_orc", "orc_warrior", "big_zombie", "ogre", "big_demon"]
 	var spawn: Vector2i = _rooms[0].get_center()
 	var boss_cell: Vector2i = _boss_cell()
 	var free: Array[Vector2i] = []
@@ -395,12 +395,21 @@ func _spawn_ores() -> void:
 			_used_cells[cell] = true
 			placed += 1
 
-## Loot adicional por tipo de enemigo: armas y frascos (día 6). Cada entrada es
+## Loot adicional por tipo de enemigo: armas y frascos. Cada entrada es
 ## [id, probabilidad]; el jefe (capitan) siempre suelta su espada + un frasco.
+## Las armas nuevas (Lanza, Arco, Machete, Martillo, Hacha doble, Báculos, etc.)
+## vienen de los frames del pack y son completamente equipables desde el drop.
 const ENEMY_LOOT := {
 	"wogol": {"weapons": [["weapon_knife", 0.05]], "flasks": [["flask_red", 0.12]]},
+	"goblin": {"weapons": [["weapon_throwing_axe", 0.06], ["weapon_knife", 0.04]], "flasks": [["flask_red", 0.1]]},
+	"imp": {"weapons": [["weapon_knife", 0.05]], "flasks": [["flask_blue", 0.08]]},
 	"skelet": {"weapons": [["weapon_rusty_sword", 0.12], ["weapon_axe", 0.05]], "flasks": [["flask_red", 0.15]]},
+	"pumpkin_dude": {"weapons": [["weapon_machete", 0.1], ["weapon_bow", 0.08]], "flasks": [["flask_yellow", 0.08]]},
 	"masked_orc": {"weapons": [["weapon_mace", 0.12], ["weapon_katana", 0.08]], "flasks": [["flask_red", 0.2], ["flask_blue", 0.05]]},
+	"orc_warrior": {"weapons": [["weapon_waraxe", 0.15], ["weapon_saw_sword", 0.1]], "flasks": [["flask_blue", 0.15]]},
+	"big_zombie": {"weapons": [["weapon_hammer", 0.12], ["weapon_cleaver", 0.08]], "flasks": [["flask_red", 0.18]]},
+	"ogre": {"weapons": [["weapon_big_hammer", 0.2], ["weapon_double_axe", 0.12]], "flasks": [["flask_red", 0.22]]},
+	"big_demon": {"weapons": [["weapon_knight_sword", 0.15], ["weapon_red_gem_sword", 0.1]], "flasks": [["flask_yellow", 0.15]]},
 	"capitan": {"weapons": [["weapon_golden_sword", 1.0]], "flasks": [["flask_red", 1.0]]},
 }
 
@@ -420,7 +429,7 @@ func on_enemy_killed(enemy: Node2D) -> void:
 		for entry in table:
 			if randf() < float(entry[1]):
 				spawn_drop(cell, String(entry[0]), 1)
-	# Día 8: si el que cayó fue el Capitán, la mazmorra está ganada → festejo.
+	# Si el que cayó fue el Capitán, la mazmorra está ganada → festejo.
 	if was_boss:
 		var hud := get_tree().get_first_node_in_group("hud")
 		if hud != null:

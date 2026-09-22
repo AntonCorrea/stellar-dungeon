@@ -1,5 +1,5 @@
 extends Node
-## Test día 4: minar un barril de madera → recurso on-chain; forjar pico_cobre
+## Test: minar un barril de madera → recurso on-chain; forjar pico_cobre
 ## quema los materiales y lo mintea; el player sube su poder de mina con el pico.
 ## Uso: godot --headless --path . res://tests/test_day4.tscn
 
@@ -75,7 +75,7 @@ func _ready() -> void:
 		push_error("no mejoró el poder de mina")
 		get_tree().quit(1)
 		return
-	print("=== TEST DIA 4 OK ===")
+	print("=== TEST 4 OK ===")
 	get_tree().quit()
 
 func _find_ore(level, kind: String):

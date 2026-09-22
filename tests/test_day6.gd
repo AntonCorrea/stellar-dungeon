@@ -1,5 +1,5 @@
 extends Node
-## Test día 6: inventario inicial (cuchillo + frasco rojo), auto-equip (mejor
+## Test: inventario inicial (cuchillo + frasco rojo), auto-equip (mejor
 ## arma sube el daño), frasco que cura y consume, atlas de muros OK y drops de
 ## arma/frasco con textura propia.
 ## Uso: godot --headless --path . res://tests/test_day6.tscn
@@ -135,5 +135,5 @@ func _ready() -> void:
 		return
 	print("forja: %s dmg %d (%s)" % [token, cdmg, Gear.quality_name(cq)])
 
-	print("=== TEST DIA 6 OK ===")
+	print("=== TEST 6 OK ===")
 	get_tree().quit()

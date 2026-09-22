@@ -1,8 +1,8 @@
 extends RefCounted
-## Loot nuevo (día 6): armas y flasks que soltaron los enemigos. Metadata
+## Loot: armas y flasks que soltaron los enemigos. Metadata
 ## compartida: nombres en español, daño por arma y curado de frascos.
-## Los ids se guardan en la cartera on-chain (mock Chain); el relé real de
-## Integrante B debe soportarlos (ver chain-spec.md, apéndice día 6).
+## Los ids se guardan en la cartera on-chain (mock Chain); el relé real
+## debe soportarlos (ver chain-spec.md).
 
 const START_WEAPON := "weapon_knife"   # el jugador nace con este
 const START_FLASK := "flask_red"       # ... y con un frasco rojo
@@ -14,14 +14,28 @@ const WEAPON_DMG := {
 	"weapon_knife": 12,
 	"weapon_rusty_sword": 13,
 	"weapon_axe": 14,
+	"weapon_spear": 13,
+	"weapon_throwing_axe": 13,
+	"weapon_bow": 13,
+	"weapon_anime_sword": 14,
+	"weapon_cleaver": 14,
 	"weapon_regular_sword": 15,
+	"weapon_hammer": 15,
+	"weapon_baton_with_spikes": 15,
+	"weapon_machete": 15,
+	"weapon_red_magic_staff": 15,
 	"weapon_mace": 16,
 	"weapon_saw_sword": 16,
 	"weapon_big_hammer": 16,
+	"weapon_bow_2": 16,
 	"weapon_katana": 17,
+	"weapon_green_magic_staff": 17,
 	"weapon_duel_sword": 18,
+	"weapon_double_axe": 18,
 	"weapon_waraxe": 18,
+	"weapon_knight_sword": 19,
 	"weapon_lavish_sword": 20,
+	"weapon_red_gem_sword": 20,
 	"weapon_golden_sword": 21,
 }
 const BASE_WEAPON_DMG := 12
@@ -30,14 +44,28 @@ const WEAPON_NAMES := {
 	"weapon_knife": "Cuchillo",
 	"weapon_rusty_sword": "Espada oxidada",
 	"weapon_axe": "Hacha",
+	"weapon_spear": "Lanza",
+	"weapon_throwing_axe": "Hacha arrojadiza",
+	"weapon_bow": "Arco corto",
+	"weapon_anime_sword": "Espada anime",
+	"weapon_cleaver": "Cuchilla",
 	"weapon_regular_sword": "Espada común",
+	"weapon_hammer": "Martillo",
+	"weapon_baton_with_spikes": "Porra con púas",
+	"weapon_machete": "Machete",
+	"weapon_red_magic_staff": "Báculo rojo",
 	"weapon_mace": "Maza",
 	"weapon_saw_sword": "Espada serrucho",
 	"weapon_big_hammer": "Martillo grande",
+	"weapon_bow_2": "Arco largo",
 	"weapon_katana": "Katana",
+	"weapon_green_magic_staff": "Báculo verde",
 	"weapon_duel_sword": "Espada de duelo",
+	"weapon_double_axe": "Hacha doble",
 	"weapon_waraxe": "Hacha de guerra",
+	"weapon_knight_sword": "Espada de caballero",
 	"weapon_lavish_sword": "Espada suntuosa",
+	"weapon_red_gem_sword": "Espada de gema roja",
 	"weapon_golden_sword": "Espada dorada",
 	"espada_cobre": "Espada de cobre",
 	"mandoble_hierro": "Mandoble de hierro",

@@ -1,5 +1,5 @@
 extends Control
-## Pantalla de título (día 8): primer contacto de la demo. Enter/Space empieza,
+## Pantalla de título: primer contacto de la demo. Enter/Space empieza,
 ## Esc cierra la ventana. Avisa que la cadena es un simulador (testnet mock).
 
 func _ready() -> void:

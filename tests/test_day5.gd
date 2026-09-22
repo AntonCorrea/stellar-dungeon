@@ -1,5 +1,5 @@
 extends Node
-## Test día 5: el Capitán de la Torre aparece en una sala lejana, entra en
+## Test: el Capitán de la Torre aparece en una sala lejana, entra en
 ## FASE 2 al llegar al 50% de HP, y al morir suelta el cosmético Tinte Real
 ## (on-chain). Con el Tinte en cartera, el jugador queda teñido de dorado.
 ## Uso: godot --headless --path . res://tests/test_day5.tscn
@@ -25,7 +25,7 @@ func _ready() -> void:
 	var spawn: Vector2i = level.local_to_cell(level._rooms[0].get_center())
 	var boss_cell: Vector2i = level.local_to_cell(boss.global_position)
 	var dist: float = spawn.distance_to(boss_cell)
-	print("=== TEST DIA 5 ===")
+	print("=== TEST 5 ===")
 	print("jefe: %s hp=%d/%d en celda %s (a %.1f tiles del spawn)" % [boss.type, boss.hp, boss._max_hp, boss_cell, dist])
 	if dist < 14.0:
 		push_error("el jefe spawn demasiado cerca del spawn (%.1f)" % dist)
@@ -80,5 +80,5 @@ func _ready() -> void:
 		push_error("las monedas del jefe no sumaron tesoro")
 		get_tree().quit(1)
 		return
-	print("=== TEST DIA 5 OK ===")
+	print("=== TEST 5 OK ===")
 	get_tree().quit()

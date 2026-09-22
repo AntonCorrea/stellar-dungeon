@@ -1,12 +1,12 @@
 extends Node
 ## Chain — MOCK de la capa Stellar. SPEC CONGELADA (21/9).
-## Interfaz de contrato con el Integrante B: ver `../stellar/chain-spec.md`.
+## Interfaz de contrato on-chain: ver `../stellar/chain-spec.md`.
 ## NO cambiar firmas: el backend real (relé Node + contrato Rust forge_ledger)
-## se enchufa el día 5 contra ESTA misma interfaz.
+## se enchufa contra ESTA misma interfaz.
 
 signal sync_finished
 
-## Gear: metadata de armas/frascos (apéndice día 6). Solo para leer constantes;
+## Gear: metadata de armas/frascos. Solo para leer constantes;
 ## el contrato sigue sin abrirse: se agrega el verbo use_item() abajo.
 const Gear := preload("res://scripts/items.gd")
 

@@ -1,5 +1,5 @@
 extends Node2D
-## Drop del día 3: moneda (tesoro, va al leaderboard on-chain) o
+## Drop: moneda (tesoro, va al leaderboard on-chain) o
 ## drop de recurso (minteado en el mock Chain). Se recoge al pisar la celda.
 
 const COIN_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/coin.frames.tres")

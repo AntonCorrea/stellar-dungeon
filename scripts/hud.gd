@@ -1,9 +1,9 @@
 extends CanvasLayer
-## HUD día 7: inventario (E) como grilla de iconos con el nombre abajo — los
+## HUD: inventario (E) como grilla de iconos con el nombre abajo — los
 ## objetos que llevás encima. La FORJA es un panel aparte que se abre haciendo
 ## click sobre el brasero del nivel. Armas forjadas: stats aleatorias (suerte,
 ## Común/Fina/Superior/Épica) y cada una es un token único de la cartera.
-## Día 8: indicador on-chain (cartera/txs/forjadas), brújula hacia el Capitán,
+## Indicador on-chain (cartera/txs/forjadas), brújula hacia el Capitán,
 ## pausa (Esc), game over con stats y pantalla de victoria al caer el jefe.
 
 const ITEM_NAME := {
@@ -19,7 +19,7 @@ const HEART_HALF: Texture2D = preload("res://assets/frames/ui_heart_half.png")
 const HEART_EMPTY: Texture2D = preload("res://assets/frames/ui_heart_empty.png")
 const MAX_HEARTS := 10
 
-## Gear: nombres/daño/calidades/curado de armas, frascos y forja (día 7).
+## Gear: nombres/daño/calidades/curado de armas, frascos y forja.
 const Gear := preload("res://scripts/items.gd")
 
 ## Icono genérico para recursos/items sin sprite propio (misma moneda tintada

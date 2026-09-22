@@ -1,0 +1,23 @@
+[gd_resource type="SpriteFrames" load_steps=9 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/frames/goblin_run_anim_f0.png" id="1"]
+[ext_resource type="Texture2D" path="res://assets/frames/goblin_run_anim_f1.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/frames/goblin_run_anim_f2.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/frames/goblin_run_anim_f3.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/frames/goblin_idle_anim_f0.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/frames/goblin_idle_anim_f1.png" id="6"]
+[ext_resource type="Texture2D" path="res://assets/frames/goblin_idle_anim_f2.png" id="7"]
+[ext_resource type="Texture2D" path="res://assets/frames/goblin_idle_anim_f3.png" id="8"]
+
+[resource]
+animations = [{
+"frames": [ExtResource("1"), ExtResource("2"), ExtResource("3"), ExtResource("4")],
+"loop": true,
+"name": &"run",
+"speed": 8.0
+}, {
+"frames": [ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8")],
+"loop": true,
+"name": &"idle",
+"speed": 3.0
+}]

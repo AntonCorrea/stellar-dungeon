@@ -1,5 +1,5 @@
 extends Node2D
-## Texto flotante (+1 recurso) con fade ascenso (día 4).
+## Texto flotante (+1 recurso) con fade ascenso.
 
 func _ready() -> void:
 	var tween := create_tween()

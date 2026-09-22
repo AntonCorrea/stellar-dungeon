@@ -1,21 +1,54 @@
 extends CharacterBody2D
-## Enemigo (día 3) + Jefe Capitán (día 5): 3 tipos con stats + boss con 2 fases.
-## Tipos LOCKED re-mapeados a sprites 0x72 disponibles:
-##   wogol  = "Rata de Alcantarilla" (débil)   · cae monedas + a veces madera
-##   skelet = "Esqueleto Guardián" (medio)     · cae más + a veces cobre
-##   masked_orc = "Demonio Smith" (medio-duro) · cae mucho + a veces hierro
-##   capitan = "Capitán de la Torre" (jefe, 2 fases) · cae tesoro + Tinte Real
+## Enemigo + Jefe Capitán (2 fases) + 7 tipos nuevos con frames del pack.
+## Mapas de sprites 0x72 disponibles:
+##   wogol  = "Rata de Alcantarilla" (débil)      · monedas + a veces madera
+##   goblin = "Goblin" (débil, veloz)             · monedas + a veces madera
+##   imp    = "Diablillo" (frágil, rapidísimo)    · monedas + a veces cobre
+##   skelet = "Esqueleto Guardián" (medio)        · más + a veces cobre
+##   pumpkin_dude = "Calabaza" (medio)            · más + a veces cobre
+##   masked_orc = "Demonio Smith" (medio-duro)    · mucho + a veces hierro
+##   orc_warrior = "Guerrero Orco" (medio-duro)   · mucho + a veces hierro
+##   big_zombie = "Gran Zombi" (tanque lento)     · mucho + a veces hierro
+##   ogre  = "Ogro" (fuerte, lento)               · mucho + a veces plata
+##   big_demon = "Demonio Mayor" (fuerte, veloz)  · mucho + a veces plata
+##   capitan = "Capitán de la Torre" (jefe, 2 fases) · tesoro + Tinte Real
 
 const TILE := 16.0
 const WOGOL_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/wogol.frames.tres")
 const SKELET_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/monster.frames.tres")
 const MASKED_ORC_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/masked_orc.frames.tres")
 const CAPITAN_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/knight.frames.tres")
+const GOBLIN_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/goblin.frames.tres")
+const IMP_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/imp.frames.tres")
+const BIG_ZOMBIE_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/big_zombie.frames.tres")
+const PUMPKIN_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/pumpkin_dude.frames.tres")
+const ORC_WARRIOR_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/orc_warrior.frames.tres")
+const OGRE_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/ogre.frames.tres")
+const BIG_DEMON_FRAMES: SpriteFrames = preload("res://assets/sprite_frames/big_demon.frames.tres")
+
+## Escala visual por tipo nuevo (los sprites de 32x36 y 16x23 se ajustan a la
+## grilla de 16px). Los tipos clásicos mantienen sus escalas históricas.
+const SCALES := {
+	"goblin": 1.0,
+	"imp": 0.9,
+	"big_zombie": 0.6,
+	"pumpkin_dude": 0.9,
+	"orc_warrior": 0.9,
+	"ogre": 0.6,
+	"big_demon": 0.6,
+}
 
 const STATS := {
 	"wogol": {"hp": 25, "dmg": 4, "speed": 55.0, "aggro": 5.0, "step": 1.5, "atk": 1.6, "coins": 1, "drop_chance": 0.2, "drop": "madera"},
+	"goblin": {"hp": 20, "dmg": 3, "speed": 72.0, "aggro": 5.0, "step": 1.2, "atk": 1.4, "coins": 1, "drop_chance": 0.15, "drop": "madera"},
+	"imp": {"hp": 14, "dmg": 4, "speed": 95.0, "aggro": 6.0, "step": 0.7, "atk": 1.1, "coins": 2, "drop_chance": 0.2, "drop": "cobre"},
 	"skelet": {"hp": 40, "dmg": 8, "speed": 70.0, "aggro": 7.0, "step": 1.0, "atk": 1.2, "coins": 2, "drop_chance": 0.4, "drop": "cobre"},
+	"pumpkin_dude": {"hp": 45, "dmg": 9, "speed": 62.0, "aggro": 6.0, "step": 1.0, "atk": 1.1, "coins": 3, "drop_chance": 0.4, "drop": "cobre"},
 	"masked_orc": {"hp": 60, "dmg": 12, "speed": 85.0, "aggro": 8.0, "step": 0.8, "atk": 1.0, "coins": 3, "drop_chance": 0.6, "drop": "hierro"},
+	"orc_warrior": {"hp": 65, "dmg": 12, "speed": 70.0, "aggro": 8.0, "step": 0.9, "atk": 1.0, "coins": 5, "drop_chance": 0.6, "drop": "hierro"},
+	"big_zombie": {"hp": 70, "dmg": 10, "speed": 42.0, "aggro": 6.0, "step": 1.3, "atk": 1.5, "coins": 4, "drop_chance": 0.5, "drop": "hierro"},
+	"ogre": {"hp": 120, "dmg": 16, "speed": 48.0, "aggro": 7.0, "step": 1.1, "atk": 1.3, "coins": 8, "drop_chance": 0.7, "drop": "plata"},
+	"big_demon": {"hp": 90, "dmg": 14, "speed": 78.0, "aggro": 9.0, "step": 0.8, "atk": 0.9, "coins": 7, "drop_chance": 0.6, "drop": "plata"},
 	"capitan": {"hp": 150, "dmg": 13, "speed": 75.0, "aggro": 9.0, "step": 0.7, "atk": 0.9, "coins": 20, "drop_chance": 1.0, "drop": "tinte_real"},
 }
 
@@ -52,8 +85,25 @@ func _ready() -> void:
 	elif type == "capitan":
 		_sprite.scale = Vector2(1.35, 1.35)
 		add_to_group("boss")
+	elif SCALES.has(type):
+		var sc := float(SCALES[type])
+		_sprite.scale = Vector2(sc, sc)
 
 func _frames_for(t: String) -> SpriteFrames:
+	if t == "goblin":
+		return GOBLIN_FRAMES
+	if t == "imp":
+		return IMP_FRAMES
+	if t == "big_zombie":
+		return BIG_ZOMBIE_FRAMES
+	if t == "pumpkin_dude":
+		return PUMPKIN_FRAMES
+	if t == "orc_warrior":
+		return ORC_WARRIOR_FRAMES
+	if t == "ogre":
+		return OGRE_FRAMES
+	if t == "big_demon":
+		return BIG_DEMON_FRAMES
 	if t == "wogol":
 		return WOGOL_FRAMES
 	if t == "masked_orc":
@@ -151,10 +201,11 @@ func _die() -> void:
 		level.on_enemy_killed(self)
 	queue_free()
 
-## Prefijo de familia de sonidos según el tipo: el Demonio Smith usa los sonidos
-## "orc" del pack y el resto (wogol/skelet/capitán) los "human".
+## Prefijo de familia de sonidos según el tipo: los orcos (Demonio Smith,
+## Guerrero Orco, Ogro, Demonio Mayor) usan los sonidos "orc" del pack y el
+## resto (wogol/skelet/capitán y criaturas) los "human".
 func _sfx_base() -> String:
-	return "orc" if type == "masked_orc" else "human"
+	return "orc" if type in ["masked_orc", "orc_warrior", "ogre", "big_demon"] else "human"
 
 func _flash(color: Color) -> void:
 	var t := create_tween()
