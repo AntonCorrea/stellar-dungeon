@@ -12,8 +12,8 @@ jobs:
   export:
     name: Exportar ${{ matrix.preset }}
     runs-on: ubuntu-latest
-    # La imagen trae Godot + export templates ya instalados para esta versión
-    # (incluye mono/rcedit para el .exe de Windows exportado desde Linux).
+    # La imagen trae el editor de Godot (y mono/rcedit para el .exe de Windows
+    # exportado desde Linux), pero NO los export templates: hay que bajarlos.
     container: barichello/godot-ci:4.4.1
     strategy:
       fail-fast: false
@@ -27,6 +27,21 @@ jobs:
             out_dir: dist/windows
     steps:
       - uses: actions/checkout@v4
+      - name: Cache de export templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-export-templates-${{ env.GODOT_VERSION }}
+      - name: Instalar export templates (si no están en cache)
+        run: |
+          DEST="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          if [ ! -f "$DEST/linux_release.x86_64" ]; then
+            curl -sSL -o /tmp/templates.tpz \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+            mkdir -p "$DEST"
+            unzip -q /tmp/templates.tpz -d /tmp/templates_extracted
+            mv /tmp/templates_extracted/templates/* "$DEST/"
+          fi
       - name: Importar proyecto (genera .godot/)
         run: godot --headless --path . --import || true
       - name: Export ${{ matrix.preset }}
