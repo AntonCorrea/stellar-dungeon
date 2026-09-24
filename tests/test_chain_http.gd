@@ -6,7 +6,7 @@ extends Node
 ## en el contrato Rust, el mock del relé y Godot — ver Fase 4).
 ##
 ## Uso (relé levantado aparte, mock o real — el test es agnóstico al modo):
-##   cd stellar/relay && npm start                     # terminal 1 (mode mock)
+##   cd stellar-dungeon-backend/relay && npm start      # terminal 1 (mode mock)
 ##   $env:CHAIN_BACKEND = "relay"                      # terminal 2
 ##   godot --headless --path . res://tests/test_chain_http.tscn
 ## CHAIN_URL opcional (default http://localhost:8787).

@@ -16,7 +16,7 @@
 # Nota: no usar bloque param() — en Windows PowerShell 5.1 rompe el LockBits de
 # imagenes grandes (bytes 0). Los paths van como variables normales.
 
-$Base      = "C:\Users\NanoCorrea\Documents\repos\event\stellar\0x72_DungeonTilesetII_v1.7.png"
+$Base      = "C:\Users\NanoCorrea\Documents\repos\event\stellar-dungeon-backend\0x72_DungeonTilesetII_v1.7.png"
 $FramesDir = "C:\Users\NanoCorrea\Documents\repos\event\stellar-dungeon\assets\frames"
 $TilesetDir = "C:\Users\NanoCorrea\Documents\repos\event\stellar-dungeon\assets\tileset"
 $Variants  = @("omnibo_jungle_dungeon.png", "omnibo_dessert_dungeon.png")

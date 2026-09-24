@@ -1,5 +1,5 @@
 # play-live.ps1: abre Stellar Dungeon conectado al relay REAL (testnet).
-# Requisito: el relay corriendo en otra ventana (stellar\relay> .\start-live.ps1)
+# Requisito: el relay corriendo en otra ventana (stellar-dungeon-backend\relay> .\start-live.ps1)
 # La calidad de las armas la tira el CONTRATO on-chain (no el juego).
 $ErrorActionPreference = "Stop"
 

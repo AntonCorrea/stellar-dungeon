@@ -1,6 +1,6 @@
 extends Node
 ## Chain over HTTP — el "mozo" (F7). Traduce los MISMOS verbos que el mock
-## Chain.gd a llamadas HTTP contra el relé Node (stellar/relay). El relé a su
+## Chain.gd a llamadas HTTP contra el relé Node (stellar-dungeon-backend/relay). El relé a su
 ## vez forja contra el contrato forge_ledger en testnet; la calidad la tira el
 ## CONTRATO, no este script ni el juego.
 ##

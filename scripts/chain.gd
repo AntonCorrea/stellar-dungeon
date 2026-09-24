@@ -1,6 +1,6 @@
 extends Node
 ## Chain — capa Stellar. SPEC CONGELADA (21/9).
-## Interfaz de contrato on-chain: ver `../stellar/chain-spec.md`.
+## Interfaz de contrato on-chain: ver `../stellar-dungeon-backend/chain-spec.md`.
 ## NO cambiar firmas: el backend real (relé Node + contrato Rust forge_ledger)
 ## se enchufa contra ESTA misma interfaz.
 ##

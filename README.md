@@ -112,7 +112,7 @@ Suite en `tests/`, corren headless con `--headless --path . res://tests/test_X.t
 El juego tiene dos backends detrás de la misma interfaz (`Chain.gd`, spec congelada): el **mock** (default, lo juega sin red) y el **relay** (HTTP al relé Node, que forja contra el contrato en testnet — la calidad la tira **el contrato**, no el juego).
 
 ```
-# 1) Levantar el relé (en stellar/relay, ver su README):
+# 1) Levantar el relé (en stellar-dungeon-backend/relay, ver su README):
 #    Modo real (testnet): setear RELAY_CONTRACT_MODE/RELAY_RPC_URL/RELAY_SECRET… y `node src/index.js`
 
 # 2) Correr el juego (o el test) apuntando al relé:
@@ -152,7 +152,7 @@ stellar-dungeon/
 
 El juego no se conecta directo a la red: usa el autoload **`Chain.gd`** como interfaz única (hoy **mock** con latencia simulada, firmas y sync de inventario). Daños, curado y equipamiento son locales de partida; la cadena registra posesión, minería, crafting (tokens únicos) y consumo.
 
-- **Spec congelada**: `chain-spec.md` (en la carpeta `stellar/` del workspace, fuera del repo) incluye apéndices:
+- **Spec congelada**: `chain-spec.md` (en la carpeta `stellar-dungeon-backend/` del workspace, fuera del repo) incluye apéndices:
   - `use_item` (consumo de frascos) y tokens nuevos;
   - craft de armas = **token único por arma** con stats deterministas: la tirada de calidad es `xorshift32(seed)` (seed = contador de forja, igual que el contrato `forge_ledger`, ver `test_forge_ledger`).
 - **Backend**: relé en **Node** + contrato en **Rust** (`forge_ledger`) sobre Stellar **testnet**, implementando la interfaz de `Chain.gd` contra `soroban-rpc`. Cada arma forjada se mintea como token inmutable (id único, sin re-minteo).
@@ -176,4 +176,4 @@ El juego no se conecta directo a la red: usa el autoload **`Chain.gd`** como int
 
 ---
 
-> ⚠️ Usá el `.gitignore` incluido (excluye `.godot/` y `dist/`). Los docs de diseño (`plan-juego-godot.md`, `idea3-rpg-mazmorra.md`, `chain-spec.md`…) y el PNG 0x72 original viven en `stellar/` fuera del repo: podés copiarlos a `docs/` si querés versionarlos.
+> ⚠️ Usá el `.gitignore` incluido (excluye `.godot/` y `dist/`). Los docs de diseño (`plan-juego-godot.md`, `idea3-rpg-mazmorra.md`, `chain-spec.md`…) y el PNG 0x72 original viven en `stellar-dungeon-backend/` fuera del repo: podés copiarlos a `docs/` si querés versionarlos.

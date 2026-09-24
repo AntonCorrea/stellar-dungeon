@@ -11,6 +11,6 @@ echo  Si ya tenes una ventana del MOZO abierta,
 echo  cerrala antes de continuar.
 echo ==================================================
 pause
-start "MOZO - relay" cmd /k "cd /d C:\Users\NanoCorrea\Documents\repos\event\stellar\relay && powershell -ExecutionPolicy Bypass -File start-live.ps1"
+start "MOZO - relay" cmd /k "cd /d C:\Users\NanoCorrea\Documents\repos\event\stellar-dungeon-backend\relay && powershell -ExecutionPolicy Bypass -File start-live.ps1"
 timeout /t 4 /nobreak >nul
 powershell -ExecutionPolicy Bypass -File "%~dp0play-live.ps1"

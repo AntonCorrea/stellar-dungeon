@@ -19,7 +19,7 @@ Objetivo: demostrar en **90 segundos** un juego real cuyo **smart contract** dec
 
 ## 1. SETUP ANTES DE LA DEMO (todo listo, no hacer nada en vivo)
 
-- [ ] Terminar el relé real: `cd stellar\relay` → `.\start-live.ps1` (ventana 1, queda abierta)
+- [ ] Terminar el relé real: `cd stellar-dungeon-backend\relay` → `.\start-live.ps1` (ventana 1, queda abierta)
 - [ ] Verificar: `Invoke-RestMethod http://localhost:8787/health` → `mode:"real"`, `dev_player:"GCPVO…"`
 - [ ] **Pre-calentar on-chain**: forjar 1 arma antes (ya existen `espada_cobre_f0` y `_f1`). Así el explorer/token se puede mostrar al instante.
 - [ ] Abrir el juego: `cd stellar-dungeon` → `.\play-live.ps1` (ventana 2)
@@ -129,7 +129,7 @@ Objetivo: demostrar en **90 segundos** un juego real cuyo **smart contract** dec
 
 ## 9. REPO / LINKS PARA MOSTRAR SI PIDEN CÓDIGO
 
-- Contrato Rust: `stellar/forge_ledger/contracts/forge_ledger/src/lib.rs` (22 tests)
-- Relé Node: `stellar/relay` (21 tests, `npm run verify` = verificación en vivo)
+- Contrato Rust: `stellar-dungeon-backend/forge_ledger/contracts/forge_ledger/src/lib.rs` (22 tests)
+- Relé Node: `stellar-dungeon-backend/relay` (21 tests, `npm run verify` = verificación en vivo)
 - Juego Godot: `stellar-dungeon` (8 tests headless, `test_forge_ledger` cruza Godot↔Rust)
-- Verificación en vivo: `npm run verify` en `stellar/relay`
+- Verificación en vivo: `npm run verify` en `stellar-dungeon-backend/relay`
