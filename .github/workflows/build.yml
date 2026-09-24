@@ -1,0 +1,40 @@
+name: Build (Linux + Windows)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  GODOT_VERSION: 4.4.1
+
+jobs:
+  export:
+    name: Exportar ${{ matrix.preset }}
+    runs-on: ubuntu-latest
+    # La imagen trae Godot + export templates ya instalados para esta versión
+    # (incluye mono/rcedit para el .exe de Windows exportado desde Linux).
+    container: barichello/godot-ci:4.4.1
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact: stellar-dungeon-linux
+            preset: Linux
+            out_dir: dist/linux
+          - artifact: stellar-dungeon-windows
+            preset: Windows Desktop
+            out_dir: dist/windows
+    steps:
+      - uses: actions/checkout@v4
+      - name: Importar proyecto (genera .godot/)
+        run: godot --headless --path . --import || true
+      - name: Export ${{ matrix.preset }}
+        run: |
+          mkdir -p "${{ matrix.out_dir }}"
+          godot --headless --path . --export-release "${{ matrix.preset }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.out_dir }}
+          if-no-files-found: error

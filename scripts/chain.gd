@@ -20,11 +20,21 @@ var backend := "mock"
 var _net: Node
 
 func _ready() -> void:
-	var want := OS.get_environment("CHAIN_BACKEND").to_lower()
-	if want == "relay":
+	## Desktop/headless (tests, demo local): variables de entorno.
+	## Build Web (itch.io, etc.): no hay entorno de proceso → se leen de la
+	## URL (?backend=relay&url=https://tu-relay.onrender.com), ver web_query.gd.
+	var want := OS.get_environment("CHAIN_BACKEND")
+	if want.is_empty():
+		want = WebQuery.get_param("backend")
+	if want.to_lower() == "relay":
 		backend = "relay"
 		_net = preload("res://scripts/chain_http.gd").new()
 		add_child(_net)
+		var url := OS.get_environment("CHAIN_URL")
+		if url.is_empty():
+			url = WebQuery.get_param("url")
+		if not url.is_empty():
+			_net.relay_url = url
 		# El HUD sigue escuchando SOLO a Chain.sync_finished: re-emitimos.
 		_net.sync_finished.connect(sync_finished.emit)
 

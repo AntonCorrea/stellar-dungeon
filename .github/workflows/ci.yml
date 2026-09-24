@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  GODOT_VERSION: 4.4.1
+
+jobs:
+  headless-tests:
+    name: Tests headless (mock, sin red)
+    runs-on: ubuntu-latest
+    container: barichello/godot-ci:4.4.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Importar proyecto (genera .godot/)
+        run: godot --headless --path . --import || true
+      - name: Suite de tests
+        run: |
+          set -e
+          status=0
+          for scene in tests/*.tscn; do
+            case "$scene" in
+              # necesita el relé real de stellar-dungeon-backend (repo privado)
+              # levantado aparte — se corre a mano, ver README.
+              tests/test_chain_http.tscn) continue ;;
+            esac
+            echo "::group::$scene"
+            if ! godot --headless --path . "res://$scene"; then
+              echo "FALLÓ: $scene"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $status
