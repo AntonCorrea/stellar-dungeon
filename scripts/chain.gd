@@ -22,21 +22,37 @@ var _net: Node
 func _ready() -> void:
 	## Desktop/headless (tests, demo local): variables de entorno.
 	## Build Web (itch.io, etc.): no hay entorno de proceso → se leen de la
-	## URL (?backend=relay&url=https://tu-relay.onrender.com), ver web_query.gd.
+	## URL (?backend=relay&url=https://tu-relay.onrender.com, ver web_query.gd)
+	## — o, más simple, el jugador elige "conectar al servidor" en el título
+	## (title.gd llama a connect_to_relay() con la URL de Render por default).
 	var want := OS.get_environment("CHAIN_BACKEND")
 	if want.is_empty():
 		want = WebQuery.get_param("backend")
 	if want.to_lower() == "relay":
-		backend = "relay"
-		_net = preload("res://scripts/chain_http.gd").new()
-		add_child(_net)
 		var url := OS.get_environment("CHAIN_URL")
 		if url.is_empty():
 			url = WebQuery.get_param("url")
-		if not url.is_empty():
-			_net.relay_url = url
-		# El HUD sigue escuchando SOLO a Chain.sync_finished: re-emitimos.
-		_net.sync_finished.connect(sync_finished.emit)
+		connect_to_relay(url)
+
+## Pasa a backend "relay" en caliente (ej.: el jugador eligió "conectar al
+## servidor" en la pantalla de título). No hace nada si ya estás conectado —
+## no hay forma de volver a mock sin reiniciar, y no hace falta: una vez que
+## el jugador pidió conexión, se queda conectado el resto de la sesión.
+func connect_to_relay(url: String = "") -> void:
+	if backend == "relay":
+		return
+	backend = "relay"
+	_net = preload("res://scripts/chain_http.gd").new()
+	# OJO: relay_url se setea ANTES de add_child. add_child dispara _ready()
+	# (y de ahí boot()) SINCRÓNICAMENTE hasta su primer await — es decir, el
+	# primer pedido HTTP sale YA, con el relay_url que tenga en ese instante.
+	# Asignarlo después de add_child llega tarde: la primera llamada ya salió
+	# contra el default (localhost:8787).
+	if not url.is_empty():
+		_net.relay_url = url
+	add_child(_net)
+	# El HUD sigue escuchando SOLO a Chain.sync_finished: re-emitimos.
+	_net.sync_finished.connect(sync_finished.emit)
 
 ## Gear: metadata de armas/frascos. Solo para leer constantes;
 ## el contrato sigue sin abrirse: se agrega el verbo use_item() abajo.
