@@ -23,7 +23,9 @@ jobs:
           status=0
           for scene in tests/*.tscn; do
             case "$scene" in
-              tests/test_chain_http.tscn) continue ;;  # necesita el relé — job relay-integration
+              # necesita el relé real de stellar-dungeon-backend (repo privado)
+              # levantado aparte — se corre a mano, ver README.
+              tests/test_chain_http.tscn) continue ;;
             esac
             echo "::group::$scene"
             if ! godot --headless --path . "res://$scene"; then
@@ -33,47 +35,3 @@ jobs:
             echo "::endgroup::"
           done
           exit $status
-
-  relay-integration:
-    name: Integración Godot ↔ relé (stellar-dungeon-backend, mock)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout juego
-        uses: actions/checkout@v4
-        with:
-          path: game
-      - name: Checkout relé (stellar-dungeon-backend)
-        uses: actions/checkout@v4
-        with:
-          repository: AntonCorrea/stellar-dungeon-backend
-          path: backend
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Levantar relé (modo mock, sin secretos)
-        working-directory: backend/relay
-        run: |
-          npm install
-          nohup npm start > relay.log 2>&1 &
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:8787/health && exit 0
-            sleep 1
-          done
-          echo "el relé no levantó a tiempo"; cat relay.log; exit 1
-      - name: Descargar Godot headless ${{ env.GODOT_VERSION }}
-        run: |
-          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-          unzip -q godot.zip
-          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
-          chmod +x /usr/local/bin/godot
-      - name: Importar proyecto
-        working-directory: game
-        run: godot --headless --path . --import || true
-      - name: test_chain_http (Chain.gd sobre HTTP contra el relé real)
-        working-directory: game
-        env:
-          CHAIN_BACKEND: relay
-        run: godot --headless --path . res://tests/test_chain_http.tscn
-      - name: Log del relé (si falló)
-        if: failure()
-        run: cat backend/relay/relay.log

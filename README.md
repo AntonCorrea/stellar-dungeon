@@ -110,9 +110,10 @@ Las armas equipables (dmg 12–21) salen de los drops y se auto-equipan; íconos
 
 ## Tests
 
-CI (`.github/workflows/ci.yml`) corre toda la suite (mock) más un job de
-integración que levanta el relé real de `stellar-dungeon-backend` (modo mock)
-y corre `test_chain_http` contra él en cada push/PR a `main`.
+CI (`.github/workflows/ci.yml`) corre toda la suite en modo **mock** en cada
+push/PR a `main`. `test_chain_http` queda afuera (necesita el relé real de
+`stellar-dungeon-backend`, repo privado — no hay token compartido entre
+ambos repos todavía): se sigue corriendo a mano, ver más abajo.
 
 Suite en `tests/`, corren headless con `--headless --path . res://tests/test_X.tscn`:
 
