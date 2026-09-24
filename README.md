@@ -94,6 +94,10 @@ Las armas equipables (dmg 12–21) salen de los drops y se auto-equipan; íconos
 
 ## Tests
 
+CI (`.github/workflows/ci.yml`) corre toda la suite (mock) más un job de
+integración que levanta el relé real de `stellar-dungeon-backend` (modo mock)
+y corre `test_chain_http` contra él en cada push/PR a `main`.
+
 Suite en `tests/`, corren headless con `--headless --path . res://tests/test_X.tscn`:
 
 | Test | Cubre |
@@ -123,6 +127,25 @@ godot --headless --path . res://tests/test_chain_http.tscn
 
 En modo `relay` el HUD muestra la cartera que el relé puede firmar (jugador dev, de `/health`), no una dirección inventada.
 
+### Local vs. servidor hosteado (build Web)
+
+`Chain.gd` elige el backend en este orden — así el mismo build sirve para jugar
+sin red, para la demo local con el relé en tu máquina, y para un build Web
+público apuntando a un relé hosteado:
+
+1. **Desktop / headless** (Godot editor, `--headless`, tests, PowerShell):
+   variables de entorno `CHAIN_BACKEND` / `CHAIN_URL` (arriba).
+2. **Build Web exportado** (no hay variables de entorno en el navegador):
+   query string de la URL, vía `scripts/web_query.gd`:
+   ```
+   https://tu-usuario.itch.io/stellar-dungeon                          # mock (local, sin red)
+   https://tu-usuario.itch.io/stellar-dungeon?backend=relay&url=https://tu-relay.onrender.com
+   ```
+3. Sin nada de lo anterior: **mock** (default, 100% jugable offline).
+
+El hosting gratis del relé (Render, plan free) está documentado en
+`stellar-dungeon-backend/relay/README.md` → sección "Hosting gratis (Render)".
+
 ## Estructura del proyecto
 
 ```
@@ -132,6 +155,7 @@ stellar-dungeon/
 ├── scripts/
 │   ├── chain.gd             # ⛓️ interfaz on-chain (spec congelada; mock + switch a relay)
 │   ├── chain_http.gd        # F7: el "mozo" HTTP (traduce los verbos de Chain al relé)
+│   ├── web_query.gd         # lee ?backend=&url= de la URL (build Web, sin env vars)
 │   ├── level.gd             # generación de mazmorra, spawns, ore, forja
 │   ├── player.gd            # movimiento, ataque, auto-equip, heal
 │   ├── enemy.gd             # enemigos + jefe con FASE 2 y barra de boss
@@ -169,7 +193,8 @@ El juego no se conecta directo a la red: usa el autoload **`Chain.gd`** como int
 - [x] Inventario en grilla y panel de forja con armas de stats deterministas (tirada cruzada con el contrato)
 - [x] Pantalla de título, pausa, brújula hacia el jefe e indicador on-chain en el HUD
 - [x] Suite de tests headless
-- [ ] Backend on-chain real (Node relé + contrato Rust) detrás de `Chain.gd`
+- [x] Backend on-chain real (Node relé + contrato Rust) detrás de `Chain.gd`
+- [x] CI (Godot headless + relé + contrato Rust) y hosting gratis del relé (Render)
 - [ ] BGM (crossfade exploración → boss)
 - [ ] Guardar/levantar partida (base building)
 - [ ] Pulido + guion demo + Loom 90s (post-challenge)
