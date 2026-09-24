@@ -10,8 +10,18 @@ extends Node
 ##   escrituras → {ok:true, action, …, hash}  |  {ok:false, reason}
 ##   lecturas   → datos directo (inventory → dict, leaderboard → array…)
 ##
-## Identidad: el relé real expone dev_player en /health (la keypair que el relé
-## puede firmar). En modo mock del relé usamos la dirección local del mock.
+## Identidad (F8): este cliente genera y persiste un player_id opaco (no es
+## una wallet real, es un id local de instalación) y se lo pasa a GET
+## /identity; el relé le deriva SU PROPIA dirección Stellar (sigue siendo
+## custodial — el relé firma por vos, "identidad honesta" — pero ya no
+## comparten todos los jugadores la misma cartera). Si el relé es viejo y no
+## tiene /identity, se cae con gracia a la dirección compartida de /health.
+##
+## Offline (F8): si una escritura no puede salir a la red, se aplica LOCAL
+## (misma lógica que el mock de chain.gd) sobre una cartera espejo persistida
+## en disco, y se encola para reintentar con el MISMO op_id cuando vuelva la
+## señal — el relé deduplica por op_id, así que un reintento nunca duplica
+## una acción que ya se había procesado del otro lado.
 
 signal sync_finished
 
@@ -22,9 +32,17 @@ signal _released
 ## dev_player): la misma del mock de chain.gd para que el store coincida.
 const FALLBACK_PLAYER := "GBAY3NQ5WQM6YZD2LM5DT2Q4O7ZFHQGQ"
 
+const Gear := preload("res://scripts/items.gd")
+
+## Estado persistente: identidad local + cartera espejo + cola offline.
+const _STATE_PATH := "user://chain_offline.json"
+
 var relay_url := "http://localhost:8787"
-## Jugador con el que se juega (definido por /health en modo real).
+## Jugador con el que se juega (dirección resuelta por /identity o /health).
 var player := FALLBACK_PLAYER
+## Id local opaco (NO es una clave privada): identifica esta instalación
+## ante el relé para que te derive siempre la MISMA dirección.
+var player_id := ""
 ## Contador local de escrituras iniciadas por este cliente (el relé mantiene
 ## el oficial por jugador en /wallet/{addr}).
 var tx_count := 0
@@ -34,14 +52,27 @@ var tx_count := 0
 var _forged := {}
 ## Cache del tesoro (GET /treasure/{addr} al boot; POST /treasure al sumar).
 var _treasure := 0
+## Último inventario conocido: lo que devolvió el relé, ajustado con lo que
+## se ganó/gastó offline. Es lo que se muestra si no hay red.
+var _inventory_cache := {}
+var _leaderboard_cache: Array = []
+## Cola de escrituras que no pudieron salir a la red: [{op_id, verb, args}].
+var _pending: Array = []
+## Contador de forjas offline, propio (nunca pisa las seeds del servidor: los
+## tokens locales llevan sufijo "_local", no "_f", hasta que se sincronizan).
+var _offline_next_seed := 0
+## true si el último pedido a la red se completó (no es un ping activo).
+var _online := true
 
 var _http: HTTPRequest
+var _sync_timer: Timer
 var _token_re := RegEx.new()
 
 # Semáforo: HTTPRequest de Godot no encola pedidos, así que serializamos.
 var _busy := false
 ## True apenas boot() resolvió player (los verbos esperan esto).
 var _identity_ready := false
+var _syncing := false
 
 func _ready() -> void:
 	var env_url := OS.get_environment("CHAIN_URL")
@@ -50,20 +81,34 @@ func _ready() -> void:
 	_token_re.compile("_f\\d+$")
 	_http = HTTPRequest.new()
 	add_child(_http)
+	_sync_timer = Timer.new()
+	_sync_timer.wait_time = 15.0
+	_sync_timer.autostart = true
+	_sync_timer.timeout.connect(func() -> void: _sync_pending())
+	add_child(_sync_timer)
+	_load_state()
 	# Fire-and-forget: Godot sigue la coroutine aunque se ignore el retorno.
 	boot()
 
-## Handshake: descubre la identidad y precarga cartera + tesoro on-chain.
+## Handshake: resuelve identidad (propia si el relé sabe, compartida si no) y
+## precarga cartera + tesoro, drenando primero lo que haya quedado pendiente
+## de una sesión offline anterior.
 func boot() -> void:
-	var health: Variant = await _http_get("/health")
-	if health is Dictionary and health.get("ok") == true:
-		var dev: String = str(health.get("dev_player", ""))
-		if not dev.is_empty():
-			player = dev
+	var ident: Variant = await _http_get("/identity?player_id=" + player_id.uri_encode())
+	if ident is Dictionary and ident.get("ok") == true and not String(ident.get("address", "")).is_empty():
+		player = String(ident.address)
+	else:
+		# Relé sin /identity (versión vieja) o sin red: cae a la compartida.
+		var health: Variant = await _http_get("/health")
+		if health is Dictionary and health.get("ok") == true:
+			var dev: String = str(health.get("dev_player", ""))
+			if not dev.is_empty():
+				player = dev
 	# Identidad lista: los verbos pueden salir a la red con una dirección que
 	# el relé real sepa interpretar (la fake GBAY… del mock no existe on-chain
 	# y playerWeapons respondería 500).
 	_identity_ready = true
+	await _sync_pending()
 	# Precarga (no bloquea los verbos): inventario y stats de tokens on-chain.
 	var inv := await get_inventory()
 	for key in inv:
@@ -74,6 +119,7 @@ func boot() -> void:
 	var treasure: Variant = await _http_get("/treasure/" + player)
 	if treasure is int:
 		_treasure = treasure
+		_save_state()
 	sync_finished.emit()
 
 ## Espera (máx. 5 s) a que boot resuelva la identidad.
@@ -88,22 +134,47 @@ func _await_identity() -> void:
 ## Mintear 1 recurso al romper un nodo de minería.
 func mine(ore_id: String) -> Dictionary:
 	await _await_identity()
-	var res := await _http_post("/mine", {"player": player, "ore_id": ore_id})
+	await _sync_pending()
+	var op_id := _new_op_id()
+	var res := await _http_post("/mine", {"player": player, "ore_id": ore_id, "op_id": op_id})
+	if res.get("network_error") == true:
+		res = _offline_mine(ore_id)
+		_enqueue("mine", {"ore_id": ore_id}, op_id)
 	_bump(res)
 	return res
 
-## Drop de recurso desde un enemigo vencido.
+## Drop de recurso desde un enemigo vencido (mismo verbo de minteo que mine).
 func claim_drop(ore_id: String) -> Dictionary:
 	await _await_identity()
-	var res := await _http_post("/claim_drop", {"player": player, "ore_id": ore_id})
+	await _sync_pending()
+	var op_id := _new_op_id()
+	var res := await _http_post("/claim_drop", {"player": player, "ore_id": ore_id, "op_id": op_id})
+	if res.get("network_error") == true:
+		res = _offline_mine(ore_id)
+		_enqueue("claim_drop", {"ore_id": ore_id}, op_id)
 	_bump(res)
 	return res
 
+func _offline_mine(ore_id: String) -> Dictionary:
+	var balance := int(_inventory_cache.get(ore_id, 0)) + 1
+	_inventory_cache[ore_id] = balance
+	_save_state()
+	return {"ok": true, "action": "mine", "ore_id": ore_id, "balance": balance,
+		"hash": _offline_hash(), "pending": true}
+
 ## Forjar: el relé quema los materiales SOLO si el forge on-chain tuvo éxito y
-## devuelve la calidad que tiró el CONTRATO ({token, quality, dmg}).
+## devuelve la calidad que tiró el CONTRATO ({token, quality, dmg}). Sin red,
+## se resuelve LOCAL con la misma tirada (xorshift) que usa el mock/contrato;
+## al sincronizar, el forge real reemplaza el token local por el definitivo.
 func craft(recipe_id: String) -> Dictionary:
 	await _await_identity()
-	var res := await _http_post("/craft", {"player": player, "recipe": recipe_id})
+	await _sync_pending()
+	var op_id := _new_op_id()
+	var res := await _http_post("/craft", {"player": player, "recipe": recipe_id, "op_id": op_id})
+	if res.get("network_error") == true:
+		res = _offline_craft(recipe_id)
+		if res.get("ok") == true:
+			_enqueue("craft", {"recipe": recipe_id}, op_id)
 	if res.get("ok") == true:
 		tx_count += 1
 		if res.has("token"):
@@ -113,16 +184,64 @@ func craft(recipe_id: String) -> Dictionary:
 	sync_finished.emit()
 	return res
 
+func _offline_craft(recipe_id: String) -> Dictionary:
+	var recipe: Dictionary = Chain.RECIPES.get(recipe_id, {})
+	if recipe.is_empty():
+		return {"ok": false, "reason": "receta inexistente"}
+	var cost: Dictionary = recipe.get("cost", {})
+	for mat in cost:
+		if int(_inventory_cache.get(mat, 0)) < int(cost[mat]):
+			return {"ok": false, "reason": "falta %s" % mat}
+	for mat in cost:
+		_inventory_cache[mat] = int(_inventory_cache.get(mat, 0)) - int(cost[mat])
+	if recipe_id in Chain.WEAPON_RECIPES:
+		var seed := _offline_next_seed
+		_offline_next_seed += 1
+		var token := "%s_local%d" % [recipe_id, seed]
+		var q := Gear.roll_quality(seed)
+		var dmg: int = int(Gear.FORGE_WEAPONS[recipe_id]["dmg"]) + int(Chain.QUALITY_BONUS[q])
+		_inventory_cache[token] = 1
+		_save_state()
+		return {"ok": true, "action": "craft", "recipe": recipe_id, "burned": cost,
+			"token": token, "quality": q, "dmg": dmg, "hash": _offline_hash(), "pending": true}
+	_inventory_cache[recipe_id] = int(_inventory_cache.get(recipe_id, 0)) + 1
+	_save_state()
+	return {"ok": true, "action": "craft", "recipe": recipe_id, "burned": cost,
+		"hash": _offline_hash(), "pending": true}
+
 ## Usar un consumible (frascos): lo descuenta el relé (off-chain).
 func use_item(item_id: String) -> Dictionary:
 	await _await_identity()
-	var res := await _http_post("/use_item", {"player": player, "item_id": item_id})
+	await _sync_pending()
+	var op_id := _new_op_id()
+	var res := await _http_post("/use_item", {"player": player, "item_id": item_id, "op_id": op_id})
+	if res.get("network_error") == true:
+		res = _offline_use_item(item_id)
+		if res.get("ok") == true:
+			_enqueue("use_item", {"item_id": item_id}, op_id)
 	_bump(res)
 	return res
 
+func _offline_use_item(item_id: String) -> Dictionary:
+	var balance := int(_inventory_cache.get(item_id, 0))
+	if balance <= 0:
+		return {"ok": false, "reason": "no tenes ese item"}
+	balance -= 1
+	if balance <= 0:
+		_inventory_cache.erase(item_id)
+	else:
+		_inventory_cache[item_id] = balance
+	_save_state()
+	return {"ok": true, "action": "use", "item": item_id, "balance": balance,
+		"hash": _offline_hash(), "pending": true}
+
 ## Transferir: el relé decide si el ítem es token on-chain (contrato) o plano.
+## Sin cola offline a propósito: mover un ítem a OTRO jugador sin confirmar
+## que del otro lado existe es el único caso donde "aplicar local y esperar"
+## puede perder el ítem de verdad. Necesita red.
 func transfer(item_id: String, to_player: String) -> Dictionary:
 	await _await_identity()
+	await _sync_pending()
 	var res := await _http_post("/transfer",
 		{"player": player, "item_id": item_id, "to_player": to_player})
 	_bump(res)
@@ -131,7 +250,15 @@ func transfer(item_id: String, to_player: String) -> Dictionary:
 ## Monedas → tesoro del leaderboard.
 func add_treasure(amount: int) -> Dictionary:
 	await _await_identity()
-	var res := await _http_post("/treasure", {"player": player, "amount": amount})
+	await _sync_pending()
+	var op_id := _new_op_id()
+	var res := await _http_post("/treasure", {"player": player, "amount": amount, "op_id": op_id})
+	if res.get("network_error") == true:
+		_treasure += amount
+		_save_state()
+		res = {"ok": true, "action": "treasure", "amount": amount, "total": _treasure,
+			"hash": _offline_hash(), "pending": true}
+		_enqueue("treasure", {"amount": amount}, op_id)
 	if res.get("ok") == true:
 		tx_count += 1
 		_treasure = int(res.get("total", _treasure))
@@ -141,10 +268,15 @@ func add_treasure(amount: int) -> Dictionary:
 # ---------- lecturas ----------
 
 ## Inventario compuesto: recursos/ítems del relé + tokens forjados (on-chain).
+## Sin red, devuelve el último conocido ajustado con lo hecho offline.
 func get_inventory() -> Dictionary:
 	await _await_identity()
 	var res: Variant = await _http_get("/inventory/" + player)
+	if res is Dictionary and res.get("network_error") == true:
+		return _inventory_cache.duplicate(true)
 	if res is Dictionary and not res.has("ok"):
+		_inventory_cache = res.duplicate(true)
+		_save_state()
 		return res
 	return {}
 
@@ -152,11 +284,15 @@ func get_inventory() -> Dictionary:
 func get_forged_stats(token_id: String) -> Dictionary:
 	return _forged.get(token_id, {})
 
-## Leaderboard del relé (NPC + jugadores reales), top 10.
+## Leaderboard del relé (NPC + jugadores reales), top 10. Sin red, el último
+## que se conoció (mejor eso que una tabla vacía).
 func get_leaderboard() -> Array:
 	await _await_identity()
 	var res: Variant = await _http_get("/leaderboard")
-	return res if res is Array else []
+	if res is Array:
+		_leaderboard_cache = res
+		return res
+	return _leaderboard_cache
 
 func get_treasure() -> int:
 	return _treasure
@@ -167,6 +303,89 @@ func get_wallet_address() -> String:
 
 func get_forged_count() -> int:
 	return _forged.size()
+
+## Acciones esperando sincronizar (para mostrar en el HUD si hace falta).
+func get_pending_count() -> int:
+	return _pending.size()
+
+## false si el último pedido a la red no se pudo completar.
+func is_online() -> bool:
+	return _online
+
+# ---------- identidad + estado local (F8) ----------
+
+func _new_player_id() -> String:
+	return Crypto.new().generate_random_bytes(16).hex_encode()
+
+func _new_op_id() -> String:
+	return Crypto.new().generate_random_bytes(8).hex_encode()
+
+func _offline_hash() -> String:
+	return "0xoffline%d" % Time.get_ticks_msec()
+
+func _load_state() -> void:
+	if not FileAccess.file_exists(_STATE_PATH):
+		player_id = _new_player_id()
+		# Mismo mint inicial que el mock/relé, para que arrancar 100% offline
+		# (primera vez, sin red) se sienta igual que arrancar online.
+		_inventory_cache = {"pico_madera": 1, Gear.START_WEAPON: 1, Gear.START_FLASK: 1}
+		return
+	var f := FileAccess.open(_STATE_PATH, FileAccess.READ)
+	if f == null:
+		player_id = _new_player_id()
+		return
+	var data: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if typeof(data) != TYPE_DICTIONARY:
+		player_id = _new_player_id()
+		return
+	player_id = String(data.get("player_id", ""))
+	if player_id.is_empty():
+		player_id = _new_player_id()
+	_inventory_cache = data.get("inventory_cache", {})
+	_treasure = int(data.get("treasure_cache", 0))
+	_pending = data.get("pending", [])
+	_offline_next_seed = int(data.get("offline_next_seed", 0))
+
+func _save_state() -> void:
+	var f := FileAccess.open(_STATE_PATH, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify({
+		"player_id": player_id,
+		"inventory_cache": _inventory_cache,
+		"treasure_cache": _treasure,
+		"pending": _pending,
+		"offline_next_seed": _offline_next_seed,
+	}))
+	f.close()
+
+func _enqueue(verb: String, args: Dictionary, op_id: String) -> void:
+	_pending.append({"op_id": op_id, "verb": verb, "args": args})
+	_save_state()
+
+## Reintenta la cola offline contra el relé, en orden, con el MISMO op_id con
+## el que se aplicó local (el relé dedupe: si ya la había procesado antes del
+## corte, devuelve la respuesta cacheada en vez de repetirla — ver op_id en
+## stellar-dungeon-backend/relay). Al vaciarse, refresca desde el servidor:
+## es la fuente de verdad una vez que hay señal de nuevo.
+func _sync_pending() -> void:
+	if _syncing or _pending.is_empty() or not _identity_ready:
+		return
+	_syncing = true
+	while not _pending.is_empty():
+		var item: Dictionary = _pending[0]
+		var body: Dictionary = (item.get("args", {}) as Dictionary).duplicate()
+		body["player"] = player
+		body["op_id"] = item.get("op_id", "")
+		var res := await _http_post("/" + String(item.get("verb", "")), body)
+		if res.get("network_error") == true:
+			break # seguimos sin red: el resto queda en cola para el próximo intento
+		_pending.pop_front()
+		_save_state()
+	_syncing = false
+	if _pending.is_empty():
+		await get_inventory() # refresca la cartera espejo con la verdad del server
 
 # ---------- transporte ----------
 
@@ -188,7 +407,9 @@ func _fetch_forge_stats(token: String) -> Dictionary:
 		return res
 	return {}
 
-## Un pedido por vez: espera a que el HTTPRequest esté libre.
+## Un pedido por vez: espera a que el HTTPRequest esté libre. Distingue una
+## falla de RED (no hay relé del otro lado: conviene la cola offline) de una
+## respuesta legítima del servidor (ok:false por una razón de juego).
 func _send(method: HTTPClient.Method, path: String, body: String) -> Variant:
 	while _busy:
 		await _released
@@ -198,11 +419,17 @@ func _send(method: HTTPClient.Method, path: String, body: String) -> Variant:
 	if err != OK:
 		_busy = false
 		_released.emit()
-		return {"ok": false, "reason": "http error %d" % err}
+		_online = false
+		return {"ok": false, "reason": "http error %d" % err, "network_error": true}
 	var result: Array = await _http.request_completed
 	_busy = false
 	_released.emit()
+	var http_result: int = result[0]
 	var status: int = result[1]
+	if http_result != HTTPRequest.RESULT_SUCCESS or status == 0 or status >= 500:
+		_online = false
+		return {"ok": false, "reason": "network %d/%d" % [http_result, status], "network_error": true}
+	_online = true
 	if status != 200:
 		return {"ok": false, "reason": "http %d" % status}
 	return JSON.parse_string(result[3].get_string_from_utf8())

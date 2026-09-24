@@ -127,6 +127,7 @@ Suite en `tests/`, corren headless con `--headless --path . res://tests/test_X.t
 | `test_day6` | Auto-equip, frascos, drops con sprite, pociones del piso, forja |
 | `test_forge_ledger` | **Cruce Godot↔contrato**: misma tabla de calidad (seed → calidad) que `forge_ledger` en Rust, cobertura 55/25/14/6 y craft con seed = contador |
 | `test_chain_http` | **F7 — protocolo Godot↔relé** (`chain_http.gd`): mina, forja, quema y lee tesoro/leaderboard vía HTTP; verifica calidad == `rollQuality(seed del token)`. Agnostico al modo: corre con relé **mock** y con relé **real** (testnet). |
+| `test_offline_sync` | **F8 — cola offline**: corta la red (apunta `relay_url` a un puerto muerto), mina/forja local, verifica que se encole y que la cartera offline sea correcta; reconecta y verifica que sincronice sin duplicar. |
 
 ### Jugar conectado al contrato (modo `relay` — Fase 7)
 
@@ -162,6 +163,32 @@ público apuntando a un relé hosteado:
 
 El hosting gratis del relé (Render, plan free) está documentado en
 `stellar-dungeon-backend/relay/README.md` → sección "Hosting gratis (Render)".
+
+### Wallet por jugador y modo offline (Fase 8)
+
+Dos cosas más que resuelve `chain_http.gd` cuando `CHAIN_BACKEND=relay`:
+
+- **Wallet propia**: al arrancar, el juego genera y persiste un id local
+  opaco (`user://chain_offline.json`, NO es una clave privada) y se lo manda
+  al relé por `GET /identity`. El relé le deriva una dirección Stellar
+  **propia y estable** (siempre la misma para esa instalación) en vez de la
+  cartera compartida de antes — sigue siendo custodial (el relé firma por
+  vos, ver `relay/README.md` → "Identidad por jugador"), pero cada jugador ya
+  tiene sus propias armas y su propio inventario on-chain. Si el relé es
+  viejo y no tiene `/identity`, cae con gracia a la cartera compartida.
+- **Offline**: si `mine`/`claim_drop`/`craft`/`use_item`/`treasure` no pueden
+  salir a la red, se aplican igual sobre una cartera espejo guardada en disco
+  (misma lógica que el mock: recetas, costos, tirada de calidad) y se encolan
+  con un id único. Apenas hay señal de nuevo (al boot, antes de la próxima
+  escritura, o cada 15s por un timer) la cola se reintenta contra el relé con
+  el MISMO id — el relé lo deduplica (`op_id`, ver backend), así que un
+  reintento nunca duplica una acción que ya se había procesado. `transfer`
+  queda afuera a propósito: mover un ítem a otro jugador sin confirmar que
+  llegó del otro lado es el único caso donde "aplicar local y esperar" puede
+  perder el ítem de verdad.
+- Mientras hay acciones sin sincronizar, `Chain.get_pending_count()` las
+  cuenta y `Chain.is_online()` dice si el último pedido a la red se completó
+  — útil si querés mostrarlo en el HUD (no está cableado a la UI todavía).
 
 ## Estructura del proyecto
 

@@ -219,6 +219,19 @@ func get_forged_count() -> int:
 		return _net.get_forged_count()
 	return _forged.size()
 
+## Acciones esperando sincronizar con el relé (F8, cola offline). 0 en mock:
+## no hay red que perder.
+func get_pending_count() -> int:
+	if backend == "relay":
+		return _net.get_pending_count()
+	return 0
+
+## false si el último pedido al relé no se pudo completar (F8). true en mock.
+func is_online() -> bool:
+	if backend == "relay":
+		return _net.is_online()
+	return true
+
 # ---------- utilidades mock ----------
 
 func _signed(data: Dictionary) -> Dictionary:
