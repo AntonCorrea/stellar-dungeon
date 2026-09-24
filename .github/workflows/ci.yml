@@ -23,9 +23,9 @@ jobs:
           status=0
           for scene in tests/*.tscn; do
             case "$scene" in
-              # necesita el relé real de stellar-dungeon-backend (repo privado)
-              # levantado aparte — se corre a mano, ver README.
-              tests/test_chain_http.tscn) continue ;;
+              # necesitan el relé real de stellar-dungeon-backend (repo privado)
+              # levantado aparte — se corren a mano, ver README.
+              tests/test_chain_http.tscn|tests/test_offline_sync.tscn) continue ;;
             esac
             echo "::group::$scene"
             if ! godot --headless --path . "res://$scene"; then
