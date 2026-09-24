@@ -39,6 +39,22 @@ godot --headless --path . res://tests/test_day6.tscn
 godot --headless --path . res://tests/test_forge_ledger.tscn
 ```
 
+### Builds descargables (Linux / Windows / Web)
+
+`.github/workflows/build.yml` exporta el juego (release) en cada push a
+`main` usando los presets de `export_presets.cfg` (`Linux`, `Windows Desktop`,
+`Web`) y sube `Linux`/`Windows` como **artifacts** de la Action (pestaña
+*Actions* → el run → *Artifacts*, sin instalar Godot). El export Web se hace
+a mano (o agregalo al mismo workflow) para subir a itch.io/Render — ver
+"Local vs. servidor hosteado" más abajo para conectarlo a un relé real.
+
+```bash
+# Local, con Godot instalado:
+godot --headless --path . --export-release "Linux" dist/linux/stellar-dungeon.x86_64
+godot --headless --path . --export-release "Windows Desktop" dist/windows/stellar-dungeon.exe
+godot --headless --path . --export-release "Web" dist/web/index.html
+```
+
 ## Controles
 
 | Acción | Teclas |
