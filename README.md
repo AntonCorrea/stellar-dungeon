@@ -36,6 +36,7 @@ godot --headless --path . res://tests/test_theme.tscn
 godot --headless --path . res://tests/test_combat.tscn
 godot --headless --path . res://tests/test_day5.tscn
 godot --headless --path . res://tests/test_day6.tscn
+godot --headless --path . res://tests/test_forge_ledger.tscn
 ```
 
 ## Controles
@@ -56,7 +57,7 @@ La partida arranca en una **pantalla de título** (`Enter`/`Space` para jugar, `
 
 1. **Explorá** la mazmorra generada (8 salas, enemigos, vetas y pociones tiradas en el piso).
 2. **Miná** vetas con el pico: madera 🪵, cobre 🟠, hierro ⚙️ y plata 🪙.
-3. **Forjá** en el brasero quemando materiales. Las **armas forjadas salen con suerte**: calidad **Común / Fina / Superior / Épica** que suma/merma daño, y cada una es un **token único** de la cartera.
+3. **Forjá** en el brasero quemando materiales. Las **armas forjadas salen con suerte**: calidad **Común / Fina / Superior / Épica** que suma/merma daño, cada una es un **token único** de la cartera, y la tirada es **determinista por seed** (xorshift) — idéntica en el juego y en el contrato on-chain, verificable en tests.
 4. **Combatí**: el daño del jugador = el arma **de mayor daño** que tenga en cartera (auto-equip).
 5. **Derrotá al Capitán** (jefe, 2 fases: entra en *FASE 2* al 50% HP) y llevate el **Tinte Real** (drop 100%, cosmético: aura dorada).
 
@@ -65,9 +66,9 @@ La partida arranca en una **pantalla de título** (`Enter`/`Space` para jugar, `
 | Receta | Costo | Resultado |
 |---|---|---|
 | Pico de Cobre | madera 1 + cobre 1 | herramienta (mina mejor) |
-| Espada de Cobre | madera 1 + cobre 2 | arma dmg base 14 + suerte |
-| Mandoble de Hierro | hierro 3 | arma dmg base 18 + suerte |
-| Hacha de Plata | hierro 2 + plata 2 | arma dmg base 22 + suerte |
+| Espada de Cobre | madera 1 + cobre 2 | arma dmg base 14 + calidad |
+| Mandoble de Hierro | hierro 3 | arma dmg base 18 + calidad |
+| Hacha de Plata | hierro 2 + plata 2 | arma dmg base 22 + calidad |
 
 **Calidades** (tiro al forjar): Común `+0` 55% · Fina `+2` 25% · Superior `+4` 14% · Épica `+8` 6%.
 
@@ -102,7 +103,25 @@ Suite en `tests/`, corren headless con `--headless --path . res://tests/test_X.t
 | `test_theme` | Pisos y muros por tema de sala |
 | `test_combat` | Ataques, enemigos, drops y banner de FASE 2 |
 | `test_day5` | Jefe (2 fases), sala del jefe, Tinte Real, leaderboard |
-| `test_day6` | Auto-equip, frascos, drops con sprite, pociones del piso, **forja con suerte** |
+| `test_day6` | Auto-equip, frascos, drops con sprite, pociones del piso, forja |
+| `test_forge_ledger` | **Cruce Godot↔contrato**: misma tabla de calidad (seed → calidad) que `forge_ledger` en Rust, cobertura 55/25/14/6 y craft con seed = contador |
+| `test_chain_http` | **F7 — protocolo Godot↔relé** (`chain_http.gd`): mina, forja, quema y lee tesoro/leaderboard vía HTTP; verifica calidad == `rollQuality(seed del token)`. Agnostico al modo: corre con relé **mock** y con relé **real** (testnet). |
+
+### Jugar conectado al contrato (modo `relay` — Fase 7)
+
+El juego tiene dos backends detrás de la misma interfaz (`Chain.gd`, spec congelada): el **mock** (default, lo juega sin red) y el **relay** (HTTP al relé Node, que forja contra el contrato en testnet — la calidad la tira **el contrato**, no el juego).
+
+```
+# 1) Levantar el relé (en stellar/relay, ver su README):
+#    Modo real (testnet): setear RELAY_CONTRACT_MODE/RELAY_RPC_URL/RELAY_SECRET… y `node src/index.js`
+
+# 2) Correr el juego (o el test) apuntando al relé:
+$env:CHAIN_BACKEND = "relay"          # "mock" por defecto; "relay" para on-chain
+$env:CHAIN_URL     = "http://localhost:8787"   # opcional
+godot --headless --path . res://tests/test_chain_http.tscn
+```
+
+En modo `relay` el HUD muestra la cartera que el relé puede firmar (jugador dev, de `/health`), no una dirección inventada.
 
 ## Estructura del proyecto
 
@@ -111,7 +130,8 @@ stellar-dungeon/
 ├── project.godot            # autoloads: Chain (mock Stellar), Sfx
 ├── scenes/                  # title, main, player, enemy, hud, forge, drop, ore…
 ├── scripts/
-│   ├── chain.gd             # ⛓️ interfaz on-chain (MOCK — la congela el spec)
+│   ├── chain.gd             # ⛓️ interfaz on-chain (spec congelada; mock + switch a relay)
+│   ├── chain_http.gd        # F7: el "mozo" HTTP (traduce los verbos de Chain al relé)
 │   ├── level.gd             # generación de mazmorra, spawns, ore, forja
 │   ├── player.gd            # movimiento, ataque, auto-equip, heal
 │   ├── enemy.gd             # enemigos + jefe con FASE 2 y barra de boss
@@ -124,7 +144,7 @@ stellar-dungeon/
 │   ├── sprite_frames/       # SpriteFrames para animaciones
 │   ├── tileset/             # tilesets de pisos/muros
 │   └── Minifantasy_Dungeon_SFX/  # SFX CC0 (Leohpaz)
-├── tests/                   # 6 tests headless
+├── tests/                   # 8 tests headless
 └── tools/make_frames.ps1    # helper para generar los frames PNG
 ```
 
@@ -134,7 +154,7 @@ El juego no se conecta directo a la red: usa el autoload **`Chain.gd`** como int
 
 - **Spec congelada**: `chain-spec.md` (en la carpeta `stellar/` del workspace, fuera del repo) incluye apéndices:
   - `use_item` (consumo de frascos) y tokens nuevos;
-  - craft de armas = **token único por arma** con stats aleatorias (`get_forged_stats`).
+  - craft de armas = **token único por arma** con stats deterministas: la tirada de calidad es `xorshift32(seed)` (seed = contador de forja, igual que el contrato `forge_ledger`, ver `test_forge_ledger`).
 - **Backend**: relé en **Node** + contrato en **Rust** (`forge_ledger`) sobre Stellar **testnet**, implementando la interfaz de `Chain.gd` contra `soroban-rpc`. Cada arma forjada se mintea como token inmutable (id único, sin re-minteo).
 
 ## Créditos / assets
@@ -146,7 +166,7 @@ El juego no se conecta directo a la red: usa el autoload **`Chain.gd`** como int
 ## Roadmap
 
 - [x] Mazmorra procedural (8 salas), minería, forja, combate, jefe 2 fases
-- [x] Inventario en grilla y panel de forja con armas de stats aleatorias
+- [x] Inventario en grilla y panel de forja con armas de stats deterministas (tirada cruzada con el contrato)
 - [x] Pantalla de título, pausa, brújula hacia el jefe e indicador on-chain en el HUD
 - [x] Suite de tests headless
 - [ ] Backend on-chain real (Node relé + contrato Rust) detrás de `Chain.gd`

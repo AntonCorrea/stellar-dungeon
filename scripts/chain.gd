@@ -1,10 +1,32 @@
 extends Node
-## Chain — MOCK de la capa Stellar. SPEC CONGELADA (21/9).
+## Chain — capa Stellar. SPEC CONGELADA (21/9).
 ## Interfaz de contrato on-chain: ver `../stellar/chain-spec.md`.
 ## NO cambiar firmas: el backend real (relé Node + contrato Rust forge_ledger)
 ## se enchufa contra ESTA misma interfaz.
+##
+## Dos backends detrás de la misma puerta (F7):
+##   "mock"  (default) → imitación local, jugable sin red.
+##   "relay"           → HTTP al relé (scripts/chain_http.gd), que forja
+##                       contra el contrato en testnet. La calidad la tira
+##                       el CONTRATO, no el juego.
+## Se elige con la variable de entorno CHAIN_BACKEND (tests/demo headless);
+## URL opcional con CHAIN_URL (default http://localhost:8787).
 
 signal sync_finished
+
+## Backend activo. Default "mock": el juego sigue siendo 100% jugable offline.
+var backend := "mock"
+## Mozo HTTP (instancia de chain_http.gd) cuando backend == "relay".
+var _net: Node
+
+func _ready() -> void:
+	var want := OS.get_environment("CHAIN_BACKEND").to_lower()
+	if want == "relay":
+		backend = "relay"
+		_net = preload("res://scripts/chain_http.gd").new()
+		add_child(_net)
+		# El HUD sigue escuchando SOLO a Chain.sync_finished: re-emitimos.
+		_net.sync_finished.connect(sync_finished.emit)
 
 ## Gear: metadata de armas/frascos. Solo para leer constantes;
 ## el contrato sigue sin abrirse: se agrega el verbo use_item() abajo.
@@ -27,8 +49,9 @@ const RECIPES := {
 	"hacha_plata": {"cost": {"hierro": 2, "plata": 2}},
 }
 
-## Recetas de armas: al forjarlas se mintea un token ÚNICO con stats aleatorios
-## (suerte: Común/Fina/Superior/Épica). El resto (picos) mintea el id plano.
+## Recetas de armas: al forjarlas se mintea un token ÚNICO con stats
+## deterministas (la calidad la tira el mismo xorshift del contrato, ver Fase 4).
+## El resto (picos) mintea el id plano.
 const WEAPON_RECIPES := ["espada_cobre", "mandoble_hierro", "hacha_plata"]
 
 # Calidades: bonus de daño según el index de tiro aleatorio (ver _roll_quality).
@@ -59,6 +82,8 @@ var _tx_count := 0
 
 ## Mintear 1 recurso al romper un nodo de minería.
 func mine(ore_id: String) -> Dictionary:
+	if backend == "relay":
+		return await _net.mine(ore_id)
 	await _latency()
 	_inventory[ore_id] = _inventory.get(ore_id, 0) + 1
 	sync_finished.emit()
@@ -66,15 +91,20 @@ func mine(ore_id: String) -> Dictionary:
 
 ## Drop de recurso desde un enemigo vencido (mismo verbo minteo que mine).
 func claim_drop(ore_id: String) -> Dictionary:
+	if backend == "relay":
+		return await _net.claim_drop(ore_id)
 	await _latency()
 	_inventory[ore_id] = _inventory.get(ore_id, 0) + 1
 	sync_finished.emit()
 	return _signed({"action": "claim_drop", "ore_id": ore_id, "balance": _inventory[ore_id]})
 
-## Forjar: quema recursos. Las armas (WEAPON_RECIPES) mintean un token único
-## con stats aleatorios (suerte); el resto (picos) mintea el id plano.
-## {ok:false} si falta material.
+## Forjar: quema recursos. Las armas (WEAPON_RECIPES) mintean un token ÚNICO
+## con stats deterministas (calidad = xorshift(seed), seed = contador de forja)
+## que el contrato forge_ledger replica con la MISMA seed; el resto (picos)
+## mintea el id plano. {ok:false} si falta material.
 func craft(recipe_id: String) -> Dictionary:
+	if backend == "relay":
+		return await _net.craft(recipe_id)
 	await _latency()
 	if not RECIPES.has(recipe_id):
 		return {"ok": false, "reason": "receta inexistente"}
@@ -85,10 +115,12 @@ func craft(recipe_id: String) -> Dictionary:
 	for mat in cost:
 		_inventory[mat] -= int(cost[mat])
 	if recipe_id in WEAPON_RECIPES:
-		# Arma forjada con suerte: token único, stats aleatorios.
+		# Arma forjada: token único. La calidad la tira el MISMO xorshift del
+		# contrato forge_ledger con seed = contador de forja (Fase 4: cruce
+		# Godot↔Rust). El relé real usa exactamente esta seed para el mint.
 		var token := "%s_f%d" % [recipe_id, _next_weapon]
+		var q := Gear.roll_quality(_next_weapon)
 		_next_weapon += 1
-		var q := _roll_quality()
 		var dmg: int = int(Gear.FORGE_WEAPONS[recipe_id]["dmg"]) + int(QUALITY_BONUS[q])
 		_forged[token] = {"base": recipe_id, "quality": q, "dmg": dmg}
 		_inventory[token] = 1
@@ -99,18 +131,9 @@ func craft(recipe_id: String) -> Dictionary:
 	sync_finished.emit()
 	return _signed({"action": "craft", "recipe": recipe_id, "burned": cost})
 
-## Tiro de calidad con suerte: 55% Común · 25% Fina · 14% Superior · 6% Épica.
-func _roll_quality() -> int:
-	var r := randf()
-	if r < 0.55:
-		return 0
-	if r < 0.80:
-		return 1
-	if r < 0.94:
-		return 2
-	return 3
-
 func transfer(item_id: String, to_player: String) -> Dictionary:
+	if backend == "relay":
+		return await _net.transfer(item_id, to_player)
 	await _latency()
 	if _inventory.get(item_id, 0) <= 0:
 		return {"ok": false, "reason": "no tenes ese item"}
@@ -121,6 +144,8 @@ func transfer(item_id: String, to_player: String) -> Dictionary:
 ## Usar un consumible (frascos): lo descuenta de la cartera. En producción el
 ## relé firma el consumo y emite el evento heal al cliente.
 func use_item(item_id: String) -> Dictionary:
+	if backend == "relay":
+		return await _net.use_item(item_id)
 	await _latency()
 	if _inventory.get(item_id, 0) <= 0:
 		return {"ok": false, "reason": "no tenes ese item"}
@@ -133,6 +158,8 @@ func use_item(item_id: String) -> Dictionary:
 
 ## Monedas recolectadas → suman al tesoro del leaderboard.
 func add_treasure(amount: int) -> Dictionary:
+	if backend == "relay":
+		return await _net.add_treasure(amount)
 	await _latency()
 	_treasure += amount
 	_leaderboard[2]["treasure"] += amount
@@ -142,30 +169,44 @@ func add_treasure(amount: int) -> Dictionary:
 # ---------- lecturas (sin firma) ----------
 
 func get_inventory() -> Dictionary:
+	if backend == "relay":
+		return await _net.get_inventory()
 	await _latency()
 	return _inventory.duplicate()
 
 ## Stats del arma forjada (vacío si el id no es un token forjado).
 func get_forged_stats(token_id: String) -> Dictionary:
+	if backend == "relay":
+		return _net.get_forged_stats(token_id)
 	return _forged.get(token_id, {})
 
 func get_leaderboard() -> Array:
+	if backend == "relay":
+		return await _net.get_leaderboard()
 	await _latency()
 	return _leaderboard.duplicate(true)
 
 func get_treasure() -> int:
+	if backend == "relay":
+		return _net.get_treasure()
 	return _treasure
 
 ## Dirección pública de la cartera (mock testnet). El HUD la muestra cortada.
 func get_wallet_address() -> String:
+	if backend == "relay":
+		return _net.get_wallet_address()
 	return WALLET_ADDR
 
 ## Cantidad de transacciones firmadas por el mock (una por escritura).
 func get_tx_count() -> int:
+	if backend == "relay":
+		return _net.tx_count
 	return _tx_count
 
 ## Cantidad de armas forjadas (tokens únicos) en la cartera.
 func get_forged_count() -> int:
+	if backend == "relay":
+		return _net.get_forged_count()
 	return _forged.size()
 
 # ---------- utilidades mock ----------

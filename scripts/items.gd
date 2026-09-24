@@ -88,12 +88,43 @@ const QUALITY := [
 ]
 
 ## Recetas de armas de la forja: daño base + icono para la grilla.
-## Al forjarlas, Chain mintea un token único con stats aleatorias (qualidad).
+## Al forjarlas, Chain mintea un token único con stats deterministas (calidad
+## = xorshift(seed), ver roll_quality abajo).
 const FORGE_WEAPONS := {
 	"espada_cobre": {"dmg": 14, "icon": "weapon_rusty_sword"},
 	"mandoble_hierro": {"dmg": 18, "icon": "weapon_duel_sword"},
 	"hacha_plata": {"dmg": 22, "icon": "weapon_waraxe"},
 }
+
+# ---------------------------------------------------------------------------
+# Tirada de calidad ON-CHAIN (Fase 4, test cruzado Godot↔Rust).
+# Port EXACTO del contrato forge_ledger (xorshift32, mismo que
+# runa/contracts/medicion). La calidad es función pura del seed: reproducirla
+# acá permite verificar en tests que Godot y el contrato dan el mismo resultado
+# para el mismo seed. NUNCA usar randf() acá ni env.prng() en el contrato.
+# ---------------------------------------------------------------------------
+
+## xorshift32 (bitwise idéntico al wasm u32; GDScript usa int64 → mascaras).
+static func xorshift_next(rng: int) -> int:
+	var x := rng & 0xFFFFFFFF
+	x = (x ^ (x << 13)) & 0xFFFFFFFF
+	x = (x ^ (x >> 17)) & 0xFFFFFFFF
+	x = (x ^ (x << 5)) & 0xFFFFFFFF
+	return x & 0xFFFFFFFF
+
+## Calidad: 55% Común · 25% Fina · 14% Superior · 6% Épica (misma cobertura
+## que el contrato). El relé real usa la misma seed que acá (contador de forja).
+static func roll_quality(seed: int) -> int:
+	var rng := 1 if seed == 0 else seed
+	var roll := xorshift_next(rng)
+	var p := roll % 100
+	if p < 55:
+		return 0
+	if p < 80:
+		return 1
+	if p < 94:
+		return 2
+	return 3
 
 static func pretty(id: String) -> String:
 	if WEAPON_NAMES.has(id):
