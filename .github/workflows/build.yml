@@ -36,7 +36,7 @@ jobs:
         run: |
           DEST="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
           if [ ! -f "$DEST/linux_release.x86_64" ]; then
-            curl -sSL -o /tmp/templates.tpz \
+            wget -q -O /tmp/templates.tpz \
               "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
             mkdir -p "$DEST"
             unzip -q /tmp/templates.tpz -d /tmp/templates_extracted
